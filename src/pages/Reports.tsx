@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { 
   Plus, 
   Search, 
@@ -34,9 +42,12 @@ import {
   Zap,
   Building2,
   Sun,
-  FileText
+  FileText,
+  ArrowRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Report {
   id: string;
@@ -143,8 +154,49 @@ const statusLabels = {
   archived: "Arhivat",
 };
 
+const reportTypes = [
+  {
+    type: "ground",
+    title: "Priză de Pământ",
+    description: "Buletin verificare conform IEC 61557",
+    icon: Zap,
+    href: "/reports/ground/new",
+    gradient: "from-warning/20 to-warning/5",
+    iconBg: "bg-warning/20 text-warning",
+  },
+  {
+    type: "electrical",
+    title: "Instalație Electrică",
+    description: "Raport verificare IEC 60364",
+    icon: Building2,
+    href: "/reports/electrical/new",
+    gradient: "from-primary/20 to-primary/5",
+    iconBg: "bg-primary/20 text-primary",
+  },
+  {
+    type: "solar",
+    title: "Sistem Fotovoltaic",
+    description: "Verificare conform IEC 62446",
+    icon: Sun,
+    href: "/reports/solar/new",
+    gradient: "from-accent/20 to-accent/5",
+    iconBg: "bg-accent/20 text-accent",
+  },
+];
+
 const Reports = () => {
+  const [isNewReportOpen, setIsNewReportOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSelectReportType = (href: string, title: string) => {
+    setIsNewReportOpen(false);
+    toast.info(`Se deschide formularul pentru ${title}...`);
+    // Navigate to the report creation page (to be implemented)
+    // navigate(href);
+  };
+
   return (
+    <>
     <AppLayout
       title="Rapoarte"
       subtitle="Gestionează toate rapoartele de verificare"
@@ -184,7 +236,7 @@ const Reports = () => {
         <Button variant="outline" size="icon">
           <Filter className="h-4 w-4" />
         </Button>
-        <Button variant="accent" className="ml-auto">
+        <Button variant="accent" className="ml-auto" onClick={() => setIsNewReportOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Raport Nou
         </Button>
@@ -310,6 +362,41 @@ const Reports = () => {
         </div>
       </div>
     </AppLayout>
+
+      {/* New Report Dialog */}
+      <Dialog open={isNewReportOpen} onOpenChange={setIsNewReportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Creare Raport Nou</DialogTitle>
+            <DialogDescription>
+              Selectează tipul de verificare pentru noul raport
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-4">
+            {reportTypes.map((reportType) => (
+              <button
+                key={reportType.type}
+                onClick={() => handleSelectReportType(reportType.href, reportType.title)}
+                className={cn(
+                  "group w-full flex items-center gap-4 rounded-lg p-4 text-left transition-all",
+                  "bg-gradient-to-r hover:shadow-md",
+                  reportType.gradient
+                )}
+              >
+                <div className={cn("flex h-12 w-12 items-center justify-center rounded-lg", reportType.iconBg)}>
+                  <reportType.icon className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">{reportType.title}</p>
+                  <p className="text-sm text-muted-foreground">{reportType.description}</p>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-1" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
