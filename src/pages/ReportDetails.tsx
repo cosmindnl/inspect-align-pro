@@ -39,6 +39,7 @@ import { useMeasurements, useDeleteMeasurement } from "@/hooks/useMeasurements";
 import { useCompany } from "@/hooks/useCompany";
 import { EditReportDialog } from "@/components/reports/EditReportDialog";
 import { MeasurementDialog } from "@/components/reports/MeasurementDialog";
+import { ReportStatusWorkflow } from "@/components/reports/ReportStatusWorkflow";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
 import { generateReportPDF } from "@/lib/generateReportPDF";
 import { format } from "date-fns";
@@ -204,17 +205,19 @@ const ReportDetails = () => {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Status and Conformity */}
+            {/* Status Workflow */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Status</CardTitle>
+                <CardTitle className="text-base">Status Raport</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex flex-wrap gap-3">
-                  <Badge variant={report.status as "draft" | "validated" | "archived"} className="text-sm">
-                    {statusLabels[report.status as keyof typeof statusLabels] || report.status}
-                  </Badge>
-                  {report.conformity && (
+                <ReportStatusWorkflow 
+                  reportId={report.id}
+                  currentStatus={report.status as "draft" | "validated" | "signed" | "archived"}
+                />
+                {report.conformity && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground mb-2">Conformitate</p>
                     <Badge variant={report.conformity} className="text-sm">
                       {report.conformity === "conformant" ? (
                         <><CheckCircle2 className="mr-1 h-3 w-3" /> Conform</>
@@ -222,8 +225,8 @@ const ReportDetails = () => {
                         <><XCircle className="mr-1 h-3 w-3" /> Neconform</>
                       )}
                     </Badge>
-                  )}
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
