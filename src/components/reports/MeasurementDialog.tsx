@@ -39,12 +39,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateMeasurement, useUpdateMeasurement } from "@/hooks/useMeasurements";
+import { useActiveEquipment } from "@/hooks/useEquipment";
 import { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
 import { getConformityRule, measurementTypes } from "@/components/settings/ConformityRulesManager";
+import { parseISO, differenceInDays } from "date-fns";
 
 type Measurement = Database['public']['Tables']['measurements']['Row'];
 
@@ -70,27 +72,6 @@ const defaultUnits = [
 // Storage key for custom units
 const CUSTOM_UNITS_KEY = 'measurement_custom_units';
 
-// Storage key for custom equipment
-const CUSTOM_EQUIPMENT_KEY = 'measurement_custom_equipment';
-
-// Default equipment list
-const defaultEquipment = [
-  "Fluke 1664FC",
-  "Fluke 1663",
-  "Fluke 1662",
-  "Metrel MI 3152",
-  "Metrel MI 3155",
-  "Megger MIT515",
-  "Megger MFT1845",
-  "Sonel MPI-530",
-  "Sonel MPI-525",
-  "Kyoritsu KEW 6016",
-  "Kyoritsu KEW 4106",
-  "Hioki IR4056",
-  "Chauvin Arnoux CA 6117",
-  "Amprobe Telaris 0100",
-];
-
 function getStoredCustomUnits(): string[] {
   try {
     const stored = localStorage.getItem(CUSTOM_UNITS_KEY);
@@ -107,20 +88,19 @@ function saveCustomUnit(unit: string) {
   }
 }
 
-function getStoredCustomEquipment(): string[] {
-  try {
-    const stored = localStorage.getItem(CUSTOM_EQUIPMENT_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
+function isEquipmentExpired(validUntil: string | null): boolean {
+  if (!validUntil) return false;
+  const today = new Date();
+  const expiryDate = parseISO(validUntil);
+  return differenceInDays(expiryDate, today) < 0;
 }
 
-function saveCustomEquipment(equipment: string) {
-  const existing = getStoredCustomEquipment();
-  if (!existing.includes(equipment)) {
-    localStorage.setItem(CUSTOM_EQUIPMENT_KEY, JSON.stringify([...existing, equipment]));
-  }
+function isEquipmentExpiringSoon(validUntil: string | null): boolean {
+  if (!validUntil) return false;
+  const today = new Date();
+  const expiryDate = parseISO(validUntil);
+  const days = differenceInDays(expiryDate, today);
+  return days >= 0 && days <= 30;
 }
 
 const formSchema = z.object({
@@ -146,6 +126,7 @@ interface MeasurementDialogProps {
 export function MeasurementDialog({ open, onOpenChange, reportId, measurement }: MeasurementDialogProps) {
   const createMeasurement = useCreateMeasurement();
   const updateMeasurement = useUpdateMeasurement();
+  const { data: dbEquipment } = useActiveEquipment();
   const isEditing = !!measurement;
   
   // Unit combobox state
@@ -155,8 +136,6 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
 
   // Equipment combobox state
   const [equipmentOpen, setEquipmentOpen] = useState(false);
-  const [customEquipment, setCustomEquipment] = useState<string[]>(getStoredCustomEquipment());
-  const [newEquipmentInput, setNewEquipmentInput] = useState("");
 
   // Combined units list
   const allUnits = [
@@ -164,11 +143,13 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
     ...customUnits.map(u => ({ value: u, label: `${u} (personalizat)` }))
   ];
 
-  // Combined equipment list
-  const allEquipment = [
-    ...defaultEquipment.map(e => ({ value: e, label: e })),
-    ...customEquipment.map(e => ({ value: e, label: `${e} (personalizat)` }))
-  ];
+  // Equipment list from database
+  const allEquipment = (dbEquipment || []).map(eq => ({
+    value: eq.name,
+    label: eq.manufacturer ? `${eq.manufacturer} ${eq.name}` : eq.name,
+    expired: isEquipmentExpired(eq.verification_valid_until),
+    expiringSoon: isEquipmentExpiringSoon(eq.verification_valid_until),
+  }));
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -196,17 +177,9 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
     }
   };
 
-  const handleAddCustomEquipment = () => {
-    const trimmed = newEquipmentInput.trim();
-    if (trimmed && !allEquipment.some(e => e.value === trimmed)) {
-      saveCustomEquipment(trimmed);
-      setCustomEquipment(prev => [...prev, trimmed]);
-      form.setValue("equipment_used", trimmed);
-      setNewEquipmentInput("");
-      setEquipmentOpen(false);
-      toast.success(`Echipamentul "${trimmed}" a fost adăugat`);
-    }
-  };
+  // Get selected equipment warning status
+  const selectedEquipmentName = form.watch("equipment_used");
+  const selectedEquipmentInfo = allEquipment.find(eq => eq.value === selectedEquipmentName);
 
   // Watch value and limit_value for auto-conformity calculation
   const watchedValue = form.watch("value");
@@ -452,81 +425,58 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
             />
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Equipment with Combobox */}
+              {/* Equipment Select */}
               <FormField
                 control={form.control}
                 name="equipment_used"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Echipament utilizat</FormLabel>
-                    <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={equipmentOpen}
-                            className={cn(
-                              "w-full justify-between font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value || "Selectează..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[250px] p-0 bg-popover" align="start">
-                        <Command>
-                          <CommandInput 
-                            placeholder="Caută echipament..." 
-                            value={newEquipmentInput}
-                            onValueChange={setNewEquipmentInput}
-                          />
-                          <CommandList>
-                            <CommandEmpty>
-                              <div className="p-2">
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  Echipamentul nu există
-                                </p>
-                                {newEquipmentInput.trim() && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={handleAddCustomEquipment}
-                                  >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Adaugă "{newEquipmentInput.trim()}"
-                                  </Button>
-                                )}
-                              </div>
-                            </CommandEmpty>
-                            <CommandGroup heading="Echipamente">
-                              {allEquipment.map((equipment) => (
-                                <CommandItem
-                                  key={equipment.value}
-                                  value={equipment.value}
-                                  onSelect={(value) => {
-                                    field.onChange(value);
-                                    setEquipmentOpen(false);
-                                    setNewEquipmentInput("");
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      field.value === equipment.value ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  {equipment.label}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className={cn(
+                          selectedEquipmentInfo?.expired && "border-destructive",
+                          selectedEquipmentInfo?.expiringSoon && "border-yellow-500"
+                        )}>
+                          <SelectValue placeholder="Selectează..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {allEquipment.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nu există echipamente. Adaugă din Setări.
+                          </div>
+                        ) : (
+                          allEquipment.map((equipment) => (
+                            <SelectItem 
+                              key={equipment.value} 
+                              value={equipment.value}
+                              className={cn(
+                                equipment.expired && "text-destructive",
+                                equipment.expiringSoon && "text-yellow-600"
+                              )}
+                            >
+                              <span className="flex items-center gap-2">
+                                {equipment.expired && <AlertTriangle className="h-3 w-3" />}
+                                {equipment.label}
+                              </span>
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {selectedEquipmentInfo?.expired && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Verificarea metrologică a expirat!
+                      </p>
+                    )}
+                    {selectedEquipmentInfo?.expiringSoon && !selectedEquipmentInfo?.expired && (
+                      <p className="text-xs text-yellow-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Verificarea expiră în curând
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}

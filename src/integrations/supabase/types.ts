@@ -223,6 +223,54 @@ export type Database = {
           },
         ]
       }
+      equipment: {
+        Row: {
+          category: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          manufacturer: string | null
+          model: string | null
+          name: string
+          notes: string | null
+          serial_number: string | null
+          updated_at: string | null
+          verification_certificate_number: string | null
+          verification_valid_until: string | null
+        }
+        Insert: {
+          category?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer?: string | null
+          model?: string | null
+          name: string
+          notes?: string | null
+          serial_number?: string | null
+          updated_at?: string | null
+          verification_certificate_number?: string | null
+          verification_valid_until?: string | null
+        }
+        Update: {
+          category?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          manufacturer?: string | null
+          model?: string | null
+          name?: string
+          notes?: string | null
+          serial_number?: string | null
+          updated_at?: string | null
+          verification_certificate_number?: string | null
+          verification_valid_until?: string | null
+        }
+        Relationships: []
+      }
       measurements: {
         Row: {
           created_at: string | null
