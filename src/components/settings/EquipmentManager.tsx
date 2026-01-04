@@ -19,12 +19,88 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, AlertTriangle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Pencil, Trash2, AlertTriangle, CheckCircle, XCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Equipment, useEquipment, useDeleteEquipment } from "@/hooks/useEquipment";
 import { EquipmentFormDialog } from "./EquipmentFormDialog";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { ro } from "date-fns/locale";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+function exportToExcel(equipment: Equipment[]) {
+  const headers = ["Denumire", "Producător", "Model", "Număr serie", "Categorie", "Verificare valabilă până", "Nr. certificat", "Status", "Observații"];
+  
+  const rows = equipment.map(eq => {
+    const status = eq.verification_valid_until 
+      ? (differenceInDays(parseISO(eq.verification_valid_until), new Date()) < 0 ? "Expirat" : "Valid")
+      : "Nespecificat";
+    
+    return [
+      eq.name,
+      eq.manufacturer || "",
+      eq.model || "",
+      eq.serial_number || "",
+      eq.category || "",
+      eq.verification_valid_until ? format(parseISO(eq.verification_valid_until), "dd.MM.yyyy") : "",
+      eq.verification_certificate_number || "",
+      status,
+      eq.notes || ""
+    ];
+  });
+
+  const csvContent = [
+    headers.join(";"),
+    ...rows.map(row => row.map(cell => `"${cell}"`).join(";"))
+  ].join("\n");
+
+  const BOM = "\uFEFF";
+  const blob = new Blob([BOM + csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `echipamente_${format(new Date(), "yyyy-MM-dd")}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportToPDF(equipment: Equipment[]) {
+  const doc = new jsPDF();
+  
+  doc.setFontSize(16);
+  doc.text("Lista Echipamente de Măsură", 14, 20);
+  doc.setFontSize(10);
+  doc.text(`Generat: ${format(new Date(), "dd.MM.yyyy HH:mm")}`, 14, 28);
+
+  const tableData = equipment.map(eq => {
+    const status = eq.verification_valid_until 
+      ? (differenceInDays(parseISO(eq.verification_valid_until), new Date()) < 0 ? "Expirat" : "Valid")
+      : "-";
+    
+    return [
+      eq.name,
+      eq.serial_number || "-",
+      eq.verification_valid_until ? format(parseISO(eq.verification_valid_until), "dd.MM.yyyy") : "-",
+      status
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 35,
+    head: [["Denumire", "Nr. serie", "Verificare până", "Status"]],
+    body: tableData,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [59, 130, 246] },
+  });
+
+  doc.save(`echipamente_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+}
 
 function getVerificationStatus(validUntil: string | null) {
   if (!validUntil) return { status: "unknown", label: "Nespecificat", variant: "outline" as const };
@@ -81,6 +157,24 @@ export function EquipmentManager() {
     }
   };
 
+  const handleExportPDF = () => {
+    if (!equipment || equipment.length === 0) {
+      toast.error("Nu există echipamente de exportat");
+      return;
+    }
+    exportToPDF(equipment);
+    toast.success("Lista a fost exportată în PDF");
+  };
+
+  const handleExportExcel = () => {
+    if (!equipment || equipment.length === 0) {
+      toast.error("Nu există echipamente de exportat");
+      return;
+    }
+    exportToExcel(equipment);
+    toast.success("Lista a fost exportată în Excel (CSV)");
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -98,10 +192,32 @@ export function EquipmentManager() {
             Gestionează lista de echipamente de măsură și verificările metrologice.
           </p>
         </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Adaugă echipament
-        </Button>
+        <div className="flex items-center gap-2">
+          {equipment && equipment.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export Excel (CSV)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Adaugă echipament
+          </Button>
+        </div>
       </div>
 
       {equipment && equipment.length > 0 ? (
