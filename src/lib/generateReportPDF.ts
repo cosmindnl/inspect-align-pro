@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';
 
@@ -270,7 +270,7 @@ export async function generateReportPDF(
       m.is_conformant === null ? '—' : m.is_conformant ? 'OK' : 'NOK',
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: yPos + 4,
       head: [['Tip Măsurătoare', 'Valoare', 'Limită', 'Locație', 'Conformitate']],
       body: tableData,
@@ -293,7 +293,7 @@ export async function generateReportPDF(
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 8;
+    yPos = (doc as any).lastAutoTable.finalY + 8;
   }
 
   // Check if we need a new page
