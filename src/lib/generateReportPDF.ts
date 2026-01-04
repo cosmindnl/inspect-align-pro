@@ -23,6 +23,8 @@ interface ReportData {
   observations: string | null;
   recommendations: string | null;
   created_at: string | null;
+  signed_at?: string | null;
+  validated_at?: string | null;
   sites: {
     name: string;
     address: string | null;
@@ -36,6 +38,8 @@ interface ReportData {
       first_name: string | null;
       last_name: string | null;
     } | null;
+    signature_url?: string | null;
+    anre_certificate_number?: string | null;
   } | null;
 }
 
@@ -340,6 +344,74 @@ export async function generateReportPDF(
     
     const recommendationLines = doc.splitTextToSize(report.recommendations, pageWidth - 2 * margin);
     doc.text(recommendationLines, margin, yPos);
+    yPos += recommendationLines.length * 5 + 8;
+  }
+
+  // Signature Section (only for signed or archived reports)
+  if (report.status === 'signed' || report.status === 'archived') {
+    // Check if we need a new page for signature
+    if (yPos > 220) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    yPos += 8;
+    doc.setDrawColor(229, 231, 235);
+    doc.setLineWidth(0.5);
+    doc.line(margin, yPos, pageWidth - margin, yPos);
+    
+    yPos += 12;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...primaryColor);
+    doc.text('SEMNĂTURĂ', margin, yPos);
+
+    yPos += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...textColor);
+
+    const engineerName = report.engineers?.profiles 
+      ? [report.engineers.profiles.first_name, report.engineers.profiles.last_name].filter(Boolean).join(' ') || '—'
+      : '—';
+
+    doc.text(`Inginer verificator: ${engineerName}`, margin, yPos);
+    
+    if (report.engineers?.anre_certificate_number) {
+      yPos += 5;
+      doc.text(`Certificat ANRE: ${report.engineers.anre_certificate_number}`, margin, yPos);
+    }
+
+    // Add signature image if available
+    if (report.engineers?.signature_url) {
+      try {
+        const signatureBase64 = await loadImageAsBase64(report.engineers.signature_url);
+        if (signatureBase64) {
+          yPos += 8;
+          // Add signature image (roughly 50x25mm for a natural signature look)
+          doc.addImage(signatureBase64, 'AUTO', margin, yPos, 50, 25);
+          yPos += 28;
+        }
+      } catch (e) {
+        console.log('Could not load signature:', e);
+        yPos += 5;
+      }
+    } else {
+      yPos += 20;
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      doc.setTextColor(...mutedColor);
+      doc.text('(Semnătură electronică)', margin, yPos);
+    }
+
+    // Add date signed
+    if (report.signed_at) {
+      yPos += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(...mutedColor);
+      doc.text(`Semnat la: ${formatDate(report.signed_at)}`, margin, yPos);
+    }
   }
 
   // Footer

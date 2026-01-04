@@ -22,6 +22,7 @@ import { useCompany, useUpdateCompany } from "@/hooks/useCompany";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SignatureUpload } from "@/components/settings/SignatureUpload";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -264,6 +265,11 @@ const Settings = () => {
                 Salvează Modificările
               </Button>
             </div>
+            
+            <Separator className="my-6" />
+            
+            {/* Signature Upload Section */}
+            <SignatureUpload />
           </div>
         </TabsContent>
 

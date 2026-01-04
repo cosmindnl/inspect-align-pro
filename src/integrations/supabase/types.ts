@@ -176,6 +176,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           profile_id: string | null
+          signature_url: string | null
           specializations: Json | null
           updated_at: string | null
         }
@@ -188,6 +189,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           profile_id?: string | null
+          signature_url?: string | null
           specializations?: Json | null
           updated_at?: string | null
         }
@@ -200,6 +202,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           profile_id?: string | null
+          signature_url?: string | null
           specializations?: Json | null
           updated_at?: string | null
         }

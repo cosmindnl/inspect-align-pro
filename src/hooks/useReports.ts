@@ -19,6 +19,8 @@ export interface ReportWithRelations extends Report {
   } | null;
   engineers: {
     id: string;
+    signature_url: string | null;
+    anre_certificate_number: string | null;
     profiles: {
       first_name: string | null;
       last_name: string | null;
@@ -46,6 +48,8 @@ export function useReports() {
           ),
           engineers (
             id,
+            signature_url,
+            anre_certificate_number,
             profiles (
               first_name,
               last_name
@@ -81,6 +85,8 @@ export function useReport(id: string) {
           ),
           engineers (
             id,
+            signature_url,
+            anre_certificate_number,
             profiles (
               first_name,
               last_name
