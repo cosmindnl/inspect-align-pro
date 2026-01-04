@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,10 +27,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useCreateClient } from "@/hooks/useClients";
+import { useCreateClient, useUpdateClient } from "@/hooks/useClients";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
 
+type Client = Database["public"]["Tables"]["clients"]["Row"];
 type ClientType = Database["public"]["Enums"]["client_type"];
 
 const clientFormSchema = z.object({
@@ -94,14 +95,18 @@ interface ClientFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   companyId: string;
+  client?: Client | null;
 }
 
 export function ClientFormDialog({
   open,
   onOpenChange,
   companyId,
+  client,
 }: ClientFormDialogProps) {
   const createClient = useCreateClient();
+  const updateClient = useUpdateClient();
+  const isEditing = !!client;
   
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),
@@ -118,36 +123,88 @@ export function ClientFormDialog({
     },
   });
 
+  // Reset form when client changes
+  useEffect(() => {
+    if (client) {
+      form.reset({
+        name: client.name,
+        client_type: client.client_type || "company",
+        cui: client.cui || "",
+        contact_person: client.contact_person || "",
+        email: client.email || "",
+        phone: client.phone || "",
+        address: client.address || "",
+        city: client.city || "",
+        county: client.county || "",
+      });
+    } else {
+      form.reset({
+        name: "",
+        client_type: "company",
+        cui: "",
+        contact_person: "",
+        email: "",
+        phone: "",
+        address: "",
+        city: "",
+        county: "",
+      });
+    }
+  }, [client, form]);
+
   const onSubmit = async (values: ClientFormValues) => {
     try {
-      await createClient.mutateAsync({
-        company_id: companyId,
-        name: values.name,
-        client_type: values.client_type as ClientType,
-        cui: values.cui || null,
-        contact_person: values.contact_person || null,
-        email: values.email || null,
-        phone: values.phone || null,
-        address: values.address || null,
-        city: values.city || null,
-        county: values.county || null,
-      });
-      
-      toast.success("Client adăugat cu succes!");
+      if (isEditing && client) {
+        await updateClient.mutateAsync({
+          id: client.id,
+          name: values.name,
+          client_type: values.client_type as ClientType,
+          cui: values.cui || null,
+          contact_person: values.contact_person || null,
+          email: values.email || null,
+          phone: values.phone || null,
+          address: values.address || null,
+          city: values.city || null,
+          county: values.county || null,
+        });
+        toast.success("Client actualizat cu succes!");
+      } else {
+        await createClient.mutateAsync({
+          company_id: companyId,
+          name: values.name,
+          client_type: values.client_type as ClientType,
+          cui: values.cui || null,
+          contact_person: values.contact_person || null,
+          email: values.email || null,
+          phone: values.phone || null,
+          address: values.address || null,
+          city: values.city || null,
+          county: values.county || null,
+        });
+        toast.success("Client adăugat cu succes!");
+      }
       form.reset();
       onOpenChange(false);
     } catch (error) {
-      toast.error("Eroare la adăugarea clientului. Verifică permisiunile.");
+      toast.error(isEditing 
+        ? "Eroare la actualizarea clientului. Verifică permisiunile."
+        : "Eroare la adăugarea clientului. Verifică permisiunile."
+      );
     }
   };
+
+  const isPending = createClient.isPending || updateClient.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Client Nou</DialogTitle>
+          <DialogTitle>{isEditing ? "Editează Client" : "Client Nou"}</DialogTitle>
           <DialogDescription>
-            Completează datele pentru a adăuga un client nou în baza de date.
+            {isEditing 
+              ? "Modifică datele clientului."
+              : "Completează datele pentru a adăuga un client nou în baza de date."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -174,7 +231,7 @@ export function ClientFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tip client *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selectează" />
@@ -297,11 +354,11 @@ export function ClientFormDialog({
               >
                 Anulează
               </Button>
-              <Button type="submit" disabled={createClient.isPending}>
-                {createClient.isPending && (
+              <Button type="submit" disabled={isPending}>
+                {isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
-                Adaugă client
+                {isEditing ? "Salvează" : "Adaugă client"}
               </Button>
             </div>
           </form>
