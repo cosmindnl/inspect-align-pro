@@ -79,6 +79,27 @@ const defaultUnits = [
 // Storage key for custom units
 const CUSTOM_UNITS_KEY = 'measurement_custom_units';
 
+// Storage key for custom equipment
+const CUSTOM_EQUIPMENT_KEY = 'measurement_custom_equipment';
+
+// Default equipment list
+const defaultEquipment = [
+  "Fluke 1664FC",
+  "Fluke 1663",
+  "Fluke 1662",
+  "Metrel MI 3152",
+  "Metrel MI 3155",
+  "Megger MIT515",
+  "Megger MFT1845",
+  "Sonel MPI-530",
+  "Sonel MPI-525",
+  "Kyoritsu KEW 6016",
+  "Kyoritsu KEW 4106",
+  "Hioki IR4056",
+  "Chauvin Arnoux CA 6117",
+  "Amprobe Telaris 0100",
+];
+
 function getStoredCustomUnits(): string[] {
   try {
     const stored = localStorage.getItem(CUSTOM_UNITS_KEY);
@@ -92,6 +113,22 @@ function saveCustomUnit(unit: string) {
   const existing = getStoredCustomUnits();
   if (!existing.includes(unit)) {
     localStorage.setItem(CUSTOM_UNITS_KEY, JSON.stringify([...existing, unit]));
+  }
+}
+
+function getStoredCustomEquipment(): string[] {
+  try {
+    const stored = localStorage.getItem(CUSTOM_EQUIPMENT_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomEquipment(equipment: string) {
+  const existing = getStoredCustomEquipment();
+  if (!existing.includes(equipment)) {
+    localStorage.setItem(CUSTOM_EQUIPMENT_KEY, JSON.stringify([...existing, equipment]));
   }
 }
 
@@ -125,10 +162,21 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
   const [customUnits, setCustomUnits] = useState<string[]>(getStoredCustomUnits());
   const [newUnitInput, setNewUnitInput] = useState("");
 
+  // Equipment combobox state
+  const [equipmentOpen, setEquipmentOpen] = useState(false);
+  const [customEquipment, setCustomEquipment] = useState<string[]>(getStoredCustomEquipment());
+  const [newEquipmentInput, setNewEquipmentInput] = useState("");
+
   // Combined units list
   const allUnits = [
     ...defaultUnits,
     ...customUnits.map(u => ({ value: u, label: `${u} (personalizat)` }))
+  ];
+
+  // Combined equipment list
+  const allEquipment = [
+    ...defaultEquipment.map(e => ({ value: e, label: e })),
+    ...customEquipment.map(e => ({ value: e, label: `${e} (personalizat)` }))
   ];
 
   const form = useForm<FormValues>({
@@ -154,6 +202,18 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
       setNewUnitInput("");
       setUnitOpen(false);
       toast.success(`Unitatea "${trimmed}" a fost adăugată`);
+    }
+  };
+
+  const handleAddCustomEquipment = () => {
+    const trimmed = newEquipmentInput.trim();
+    if (trimmed && !allEquipment.some(e => e.value === trimmed)) {
+      saveCustomEquipment(trimmed);
+      setCustomEquipment(prev => [...prev, trimmed]);
+      form.setValue("equipment_used", trimmed);
+      setNewEquipmentInput("");
+      setEquipmentOpen(false);
+      toast.success(`Echipamentul "${trimmed}" a fost adăugat`);
     }
   };
 
@@ -378,16 +438,81 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
             />
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Equipment */}
+              {/* Equipment with Combobox */}
               <FormField
                 control={form.control}
                 name="equipment_used"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Echipament utilizat</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Fluke 1664FC" {...field} />
-                    </FormControl>
+                    <Popover open={equipmentOpen} onOpenChange={setEquipmentOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={equipmentOpen}
+                            className={cn(
+                              "w-full justify-between font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value || "Selectează..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[250px] p-0 bg-popover" align="start">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Caută echipament..." 
+                            value={newEquipmentInput}
+                            onValueChange={setNewEquipmentInput}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              <div className="p-2">
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  Echipamentul nu există
+                                </p>
+                                {newEquipmentInput.trim() && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={handleAddCustomEquipment}
+                                  >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Adaugă "{newEquipmentInput.trim()}"
+                                  </Button>
+                                )}
+                              </div>
+                            </CommandEmpty>
+                            <CommandGroup heading="Echipamente">
+                              {allEquipment.map((equipment) => (
+                                <CommandItem
+                                  key={equipment.value}
+                                  value={equipment.value}
+                                  onSelect={(value) => {
+                                    field.onChange(value);
+                                    setEquipmentOpen(false);
+                                    setNewEquipmentInput("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === equipment.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {equipment.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}

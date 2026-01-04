@@ -15,7 +15,8 @@ import {
   Upload,
   Trash2,
   Loader2,
-  ImageIcon
+  ImageIcon,
+  Wrench
 } from "lucide-react";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useCompany, useUpdateCompany } from "@/hooks/useCompany";
@@ -23,6 +24,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SignatureUpload } from "@/components/settings/SignatureUpload";
+import { EquipmentManager } from "@/components/settings/EquipmentManager";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -203,6 +205,10 @@ const Settings = () => {
           <TabsTrigger value="company" className="gap-2">
             <Building className="h-4 w-4" />
             Companie
+          </TabsTrigger>
+          <TabsTrigger value="equipment" className="gap-2">
+            <Wrench className="h-4 w-4" />
+            Echipamente
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
@@ -442,6 +448,12 @@ const Settings = () => {
                 </p>
               )}
             </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="equipment">
+          <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl">
+            <EquipmentManager />
           </div>
         </TabsContent>
 
