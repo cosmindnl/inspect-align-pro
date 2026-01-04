@@ -22,11 +22,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useClients } from "@/hooks/useClients";
+import { useProfile } from "@/hooks/useProfile";
+import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import { toast } from "sonner";
 
 const Clients = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const { data: clients, isLoading, error } = useClients();
+  const { data: profile } = useProfile();
 
   const filteredClients = clients?.filter(client => {
     const matchesSearch = searchQuery === "" ||
@@ -39,7 +43,11 @@ const Clients = () => {
   }) ?? [];
 
   const handleAddClient = () => {
-    toast.info("Funcționalitate în dezvoltare: Adăugare client nou");
+    if (!profile?.company_id) {
+      toast.error("Trebuie să ai o companie asociată pentru a adăuga clienți.");
+      return;
+    }
+    setIsFormOpen(true);
   };
 
   const handleEditClient = (clientId: string) => {
@@ -190,6 +198,14 @@ const Clients = () => {
           ))
         )}
       </div>
+
+      {profile?.company_id && (
+        <ClientFormDialog
+          open={isFormOpen}
+          onOpenChange={setIsFormOpen}
+          companyId={profile.company_id}
+        />
+      )}
     </AppLayout>
   );
 };
