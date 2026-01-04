@@ -31,8 +31,10 @@ import {
   Thermometer,
   Clock,
   FileText,
-  Loader2
+  Loader2,
+  Lock
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useReport, useDeleteReport } from "@/hooks/useReports";
 import { useMeasurements, useDeleteMeasurement } from "@/hooks/useMeasurements";
@@ -74,6 +76,9 @@ const ReportDetails = () => {
   const { data: company } = useCompany();
   const deleteReport = useDeleteReport();
   const deleteMeasurement = useDeleteMeasurement();
+
+  // Check if report is locked (signed or archived)
+  const isReportLocked = report?.status === "signed" || report?.status === "archived";
 
   const handleDownloadPDF = async () => {
     if (!report) return;
@@ -182,10 +187,25 @@ const ReportDetails = () => {
         }
         subtitle=""
       >
+        {/* Locked Report Warning */}
+        {isReportLocked && (
+          <Alert className="mb-6 border-amber-500/50 bg-amber-500/10">
+            <Lock className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-700">
+              Acest raport este <strong>{report.status === "signed" ? "semnat" : "arhivat"}</strong> și nu poate fi modificat. 
+              Pentru a face modificări, schimbați statusul la "Ciornă" sau "Validat".
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-2 mb-6">
-          <Button variant="outline" onClick={() => setIsEditOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
+          <Button 
+            variant="outline" 
+            onClick={() => setIsEditOpen(true)}
+            disabled={isReportLocked}
+          >
+            {isReportLocked ? <Lock className="mr-2 h-4 w-4" /> : <Pencil className="mr-2 h-4 w-4" />}
             Editează
           </Button>
           <Button variant="outline" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>
@@ -196,7 +216,11 @@ const ReportDetails = () => {
             )}
             Descarcă PDF
           </Button>
-          <Button variant="destructive" onClick={() => setIsDeleteOpen(true)}>
+          <Button 
+            variant="destructive" 
+            onClick={() => setIsDeleteOpen(true)}
+            disabled={isReportLocked}
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             Șterge
           </Button>
@@ -234,8 +258,12 @@ const ReportDetails = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="text-base">Măsurători</CardTitle>
-                <Button size="sm" onClick={handleAddMeasurement}>
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button 
+                  size="sm" 
+                  onClick={handleAddMeasurement}
+                  disabled={isReportLocked}
+                >
+                  {isReportLocked ? <Lock className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                   Adaugă
                 </Button>
               </CardHeader>
@@ -295,24 +323,28 @@ const ReportDetails = () => {
                               )}
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => handleEditMeasurement(measurement)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteMeasurement(measurement.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
+                              {!isReportLocked ? (
+                                <div className="flex gap-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleEditMeasurement(measurement)}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteMeasurement(measurement.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Lock className="h-4 w-4 text-muted-foreground" />
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
