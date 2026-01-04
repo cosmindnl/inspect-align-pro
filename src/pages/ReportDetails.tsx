@@ -30,7 +30,8 @@ import {
   XCircle,
   Thermometer,
   Clock,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReport, useDeleteReport } from "@/hooks/useReports";
@@ -38,6 +39,7 @@ import { useMeasurements, useDeleteMeasurement } from "@/hooks/useMeasurements";
 import { EditReportDialog } from "@/components/reports/EditReportDialog";
 import { MeasurementDialog } from "@/components/reports/MeasurementDialog";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
+import { generateReportPDF } from "@/lib/generateReportPDF";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { toast } from "sonner";
@@ -63,11 +65,25 @@ const ReportDetails = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isMeasurementOpen, setIsMeasurementOpen] = useState(false);
   const [editingMeasurement, setEditingMeasurement] = useState<any>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const { data: report, isLoading: reportLoading } = useReport(id || "");
   const { data: measurements, isLoading: measurementsLoading } = useMeasurements(id || "");
   const deleteReport = useDeleteReport();
   const deleteMeasurement = useDeleteMeasurement();
+
+  const handleDownloadPDF = async () => {
+    if (!report) return;
+    setIsGeneratingPDF(true);
+    try {
+      generateReportPDF(report as any, measurements || []);
+      toast.success("PDF generat cu succes");
+    } catch (error: any) {
+      toast.error("Eroare la generarea PDF: " + error.message);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   const handleDeleteReport = async () => {
     if (!id) return;
@@ -169,8 +185,12 @@ const ReportDetails = () => {
             <Pencil className="mr-2 h-4 w-4" />
             Editează
           </Button>
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
+          <Button variant="outline" onClick={handleDownloadPDF} disabled={isGeneratingPDF}>
+            {isGeneratingPDF ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-2 h-4 w-4" />
+            )}
             Descarcă PDF
           </Button>
           <Button variant="destructive" onClick={() => setIsDeleteOpen(true)}>
