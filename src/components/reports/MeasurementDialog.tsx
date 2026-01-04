@@ -303,7 +303,7 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
                 control={form.control}
                 name="value"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Valoare</FormLabel>
                     <FormControl>
                       <Input type="number" step="any" placeholder="0" {...field} />
@@ -398,7 +398,7 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
                 control={form.control}
                 name="limit_value"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Limită</FormLabel>
                     <FormControl>
                       <Input type="number" step="any" placeholder="0" {...field} />
