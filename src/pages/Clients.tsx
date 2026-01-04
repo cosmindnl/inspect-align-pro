@@ -24,11 +24,17 @@ import {
 import { useClients } from "@/hooks/useClients";
 import { useProfile } from "@/hooks/useProfile";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
+import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
 import { toast } from "sonner";
+import { Database } from "@/integrations/supabase/types";
+
+type Client = Database["public"]["Tables"]["clients"]["Row"];
 
 const Clients = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { data: clients, isLoading, error } = useClients();
   const { data: profile } = useProfile();
 
@@ -47,19 +53,26 @@ const Clients = () => {
       toast.error("Trebuie să ai o companie asociată pentru a adăuga clienți.");
       return;
     }
+    setSelectedClient(null);
     setIsFormOpen(true);
   };
 
-  const handleEditClient = (clientId: string) => {
-    toast.info("Funcționalitate în dezvoltare: Editare client");
+  const handleEditClient = (client: Client) => {
+    if (!profile?.company_id) {
+      toast.error("Trebuie să ai o companie asociată pentru a edita clienți.");
+      return;
+    }
+    setSelectedClient(client);
+    setIsFormOpen(true);
   };
 
   const handleViewReports = (clientId: string) => {
     toast.info("Funcționalitate în dezvoltare: Vizualizare rapoarte client");
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    toast.info("Funcționalitate în dezvoltare: Ștergere client");
+  const handleDeleteClient = (client: Client) => {
+    setSelectedClient(client);
+    setIsDeleteOpen(true);
   };
 
   return (
@@ -143,7 +156,7 @@ const Clients = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleEditClient(client.id)}>
+                    <DropdownMenuItem onClick={() => handleEditClient(client)}>
                       Editează
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleViewReports(client.id)}>
@@ -151,7 +164,7 @@ const Clients = () => {
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="text-destructive"
-                      onClick={() => handleDeleteClient(client.id)}
+                      onClick={() => handleDeleteClient(client)}
                     >
                       Șterge
                     </DropdownMenuItem>
@@ -204,8 +217,15 @@ const Clients = () => {
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           companyId={profile.company_id}
+          client={selectedClient}
         />
       )}
+
+      <DeleteClientDialog
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        client={selectedClient}
+      />
     </AppLayout>
   );
 };
