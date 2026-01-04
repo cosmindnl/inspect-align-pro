@@ -31,6 +31,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { 
   Plus, 
   Search, 
@@ -43,7 +44,13 @@ import {
   Building2,
   Sun,
   FileText,
-  ArrowRight
+  ArrowRight,
+  MapPin,
+  User,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+  Copy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -186,6 +193,8 @@ const reportTypes = [
 
 const Reports = () => {
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleSelectReportType = (href: string, title: string) => {
@@ -193,6 +202,23 @@ const Reports = () => {
     toast.info(`Se deschide formularul pentru ${title}...`);
     // Navigate to the report creation page (to be implemented)
     // navigate(href);
+  };
+
+  const handleViewReport = (report: Report) => {
+    setSelectedReport(report);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleEditReport = (report: Report) => {
+    toast.info(`Deschidere formular editare pentru ${report.id}...`);
+  };
+
+  const handleDownloadPdf = (report: Report) => {
+    toast.success(`Se descarcă PDF pentru ${report.id}...`);
+  };
+
+  const handleDuplicateReport = (report: Report) => {
+    toast.success(`Raportul ${report.id} a fost duplicat.`);
   };
 
   return (
@@ -321,20 +347,20 @@ const Reports = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewReport(report)}>
                           <Eye className="mr-2 h-4 w-4" />
                           Vizualizează
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditReport(report)}>
                           <Pencil className="mr-2 h-4 w-4" />
                           Editează
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownloadPdf(report)}>
                           <Download className="mr-2 h-4 w-4" />
                           Descarcă PDF
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <FileText className="mr-2 h-4 w-4" />
+                        <DropdownMenuItem onClick={() => handleDuplicateReport(report)}>
+                          <Copy className="mr-2 h-4 w-4" />
                           Duplică
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -394,6 +420,106 @@ const Reports = () => {
               </button>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Report Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              {selectedReport && (
+                <>
+                  <div className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-lg bg-muted",
+                    typeConfig[selectedReport.type].color
+                  )}>
+                    {(() => {
+                      const TypeIcon = typeConfig[selectedReport.type].icon;
+                      return <TypeIcon className="h-5 w-5" />;
+                    })()}
+                  </div>
+                  <div>
+                    <span className="text-lg">{selectedReport.title}</span>
+                    <p className="text-sm font-normal text-muted-foreground">{selectedReport.id}</p>
+                  </div>
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedReport && (
+            <div className="space-y-6 pt-4">
+              {/* Status and Conformity */}
+              <div className="flex gap-3">
+                <Badge variant={selectedReport.status as "draft" | "validated" | "archived"}>
+                  {statusLabels[selectedReport.status]}
+                </Badge>
+                {selectedReport.conformity && (
+                  <Badge variant={selectedReport.conformity}>
+                    {selectedReport.conformity === "conformant" ? (
+                      <><CheckCircle2 className="mr-1 h-3 w-3" /> Conform</>
+                    ) : (
+                      <><XCircle className="mr-1 h-3 w-3" /> Neconform</>
+                    )}
+                  </Badge>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Report Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Building2 className="h-4 w-4" /> Client
+                  </p>
+                  <p className="font-medium">{selectedReport.client}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <MapPin className="h-4 w-4" /> Locație
+                  </p>
+                  <p className="font-medium">{selectedReport.location}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <User className="h-4 w-4" /> Inginer verificator
+                  </p>
+                  <p className="font-medium">{selectedReport.engineer}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Calendar className="h-4 w-4" /> Data verificării
+                  </p>
+                  <p className="font-medium">{selectedReport.date}</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Type-specific info placeholder */}
+              <div className="rounded-lg bg-muted/50 p-4">
+                <p className="text-sm text-muted-foreground mb-2">Tip verificare</p>
+                <p className="font-medium">{typeConfig[selectedReport.type].label}</p>
+                <p className="text-sm text-muted-foreground mt-3">
+                  Detaliile complete ale măsurătorilor vor fi disponibile după implementarea bazei de date.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => handleEditReport(selectedReport)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Editează
+                </Button>
+                <Button variant="accent" className="flex-1" onClick={() => handleDownloadPdf(selectedReport)}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Descarcă PDF
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
