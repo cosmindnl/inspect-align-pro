@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 
 interface AppLayoutProps {
   children: React.ReactNode;
-  title?: string;
+  title?: React.ReactNode;
   subtitle?: string;
 }
 

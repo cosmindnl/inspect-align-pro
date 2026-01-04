@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Reports from "./pages/Reports";
+import ReportDetails from "./pages/ReportDetails";
 import Clients from "./pages/Clients";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -27,7 +28,7 @@ const App = () => (
             <Route path="/onboarding" element={<ProtectedRoute requiresOnboarding={false}><Onboarding /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-            <Route path="/reports/:type" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/reports/:id" element={<ProtectedRoute><ReportDetails /></ProtectedRoute>} />
             <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

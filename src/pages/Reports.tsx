@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,6 +74,7 @@ const statusLabels = {
 
 
 const Reports = () => {
+  const navigate = useNavigate();
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState<ReportWithRelations | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -96,12 +98,11 @@ const Reports = () => {
 
 
   const handleViewReport = (report: ReportWithRelations) => {
-    setSelectedReport(report);
-    setIsViewDialogOpen(true);
+    navigate(`/reports/${report.id}`);
   };
 
   const handleEditReport = (report: ReportWithRelations) => {
-    toast.info(`Deschidere formular editare pentru ${report.report_number}...`);
+    navigate(`/reports/${report.id}`);
   };
 
   const handleDownloadPdf = (report: ReportWithRelations) => {
