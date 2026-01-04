@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,13 +23,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateMeasurement, useUpdateMeasurement } from "@/hooks/useMeasurements";
 import { Database } from "@/integrations/supabase/types";
+import { cn } from "@/lib/utils";
 
 type Measurement = Database['public']['Tables']['measurements']['Row'];
 
@@ -45,6 +59,41 @@ const measurementTypes = [
   { value: "power", label: "Putere (kW)" },
   { value: "other", label: "Altele" },
 ];
+
+// Default units that can be extended by user
+const defaultUnits = [
+  { value: "Ω", label: "Ω (Ohm)" },
+  { value: "MΩ", label: "MΩ (Megaohm)" },
+  { value: "kΩ", label: "kΩ (Kiloohm)" },
+  { value: "V", label: "V (Volt)" },
+  { value: "A", label: "A (Amper)" },
+  { value: "mA", label: "mA (Miliamper)" },
+  { value: "kW", label: "kW (Kilowatt)" },
+  { value: "W", label: "W (Watt)" },
+  { value: "ms", label: "ms (Milisecunde)" },
+  { value: "Hz", label: "Hz (Hertz)" },
+  { value: "°C", label: "°C (Grade Celsius)" },
+  { value: "%", label: "% (Procent)" },
+];
+
+// Storage key for custom units
+const CUSTOM_UNITS_KEY = 'measurement_custom_units';
+
+function getStoredCustomUnits(): string[] {
+  try {
+    const stored = localStorage.getItem(CUSTOM_UNITS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomUnit(unit: string) {
+  const existing = getStoredCustomUnits();
+  if (!existing.includes(unit)) {
+    localStorage.setItem(CUSTOM_UNITS_KEY, JSON.stringify([...existing, unit]));
+  }
+}
 
 const formSchema = z.object({
   measurement_type: z.string().min(1, "Selectează tipul măsurătorii"),
@@ -70,6 +119,17 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
   const createMeasurement = useCreateMeasurement();
   const updateMeasurement = useUpdateMeasurement();
   const isEditing = !!measurement;
+  
+  // Unit combobox state
+  const [unitOpen, setUnitOpen] = useState(false);
+  const [customUnits, setCustomUnits] = useState<string[]>(getStoredCustomUnits());
+  const [newUnitInput, setNewUnitInput] = useState("");
+
+  // Combined units list
+  const allUnits = [
+    ...defaultUnits,
+    ...customUnits.map(u => ({ value: u, label: `${u} (personalizat)` }))
+  ];
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -84,6 +144,18 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
       is_conformant: false,
     },
   });
+
+  const handleAddCustomUnit = () => {
+    const trimmed = newUnitInput.trim();
+    if (trimmed && !allUnits.some(u => u.value === trimmed)) {
+      saveCustomUnit(trimmed);
+      setCustomUnits(prev => [...prev, trimmed]);
+      form.setValue("unit", trimmed);
+      setNewUnitInput("");
+      setUnitOpen(false);
+      toast.success(`Unitatea "${trimmed}" a fost adăugată`);
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -194,16 +266,81 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
                 )}
               />
 
-              {/* Unit */}
+              {/* Unit with Combobox */}
               <FormField
                 control={form.control}
                 name="unit"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Unitate</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ω, V, A..." {...field} />
-                    </FormControl>
+                    <Popover open={unitOpen} onOpenChange={setUnitOpen}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={unitOpen}
+                            className={cn(
+                              "w-full justify-between font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value || "Selectează..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[200px] p-0 bg-popover" align="start">
+                        <Command>
+                          <CommandInput 
+                            placeholder="Caută unitate..." 
+                            value={newUnitInput}
+                            onValueChange={setNewUnitInput}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              <div className="p-2">
+                                <p className="text-sm text-muted-foreground mb-2">
+                                  Unitatea nu există
+                                </p>
+                                {newUnitInput.trim() && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={handleAddCustomUnit}
+                                  >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Adaugă "{newUnitInput.trim()}"
+                                  </Button>
+                                )}
+                              </div>
+                            </CommandEmpty>
+                            <CommandGroup heading="Unități">
+                              {allUnits.map((unit) => (
+                                <CommandItem
+                                  key={unit.value}
+                                  value={unit.value}
+                                  onSelect={(value) => {
+                                    field.onChange(value);
+                                    setUnitOpen(false);
+                                    setNewUnitInput("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      field.value === unit.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {unit.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
