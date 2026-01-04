@@ -10,7 +10,7 @@ import {
   ChevronDown,
   LogOut
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   Sidebar,
@@ -33,6 +33,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { toast } from "sonner";
 
 const mainNavItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -53,10 +56,33 @@ const managementItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const { data: profile } = useProfile();
   const collapsed = state === "collapsed";
 
   const isActive = (path: string) => location.pathname === path;
   const isReportActive = reportTypes.some(item => location.pathname.startsWith(item.url));
+
+  const userInitials = profile 
+    ? `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`.toUpperCase() || "U"
+    : "U";
+  
+  const userName = profile 
+    ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Utilizator"
+    : "Utilizator";
+
+  const companyName = profile?.companies?.name || "Inginer ANRE";
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Te-ai deconectat cu succes!");
+      navigate("/auth");
+    } catch (error) {
+      toast.error("Eroare la deconectare");
+    }
+  };
 
   return (
     <Sidebar className="border-r-0">
@@ -195,30 +221,30 @@ export function AppSidebar() {
             <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent/50 transition-colors">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs">
-                  IM
+                  {userInitials}
                 </AvatarFallback>
               </Avatar>
               {!collapsed && (
                 <>
-                  <div className="flex flex-col items-start text-left flex-1">
-                    <span className="text-sm font-medium text-sidebar-foreground">
-                      Ion Marinescu
+                  <div className="flex flex-col items-start text-left flex-1 min-w-0">
+                    <span className="text-sm font-medium text-sidebar-foreground truncate w-full">
+                      {userName}
                     </span>
-                    <span className="text-xs text-sidebar-foreground/60">
-                      Inginer ANRE
+                    <span className="text-xs text-sidebar-foreground/60 truncate w-full">
+                      {companyName}
                     </span>
                   </div>
-                  <ChevronDown className="h-4 w-4 text-sidebar-foreground/50" />
+                  <ChevronDown className="h-4 w-4 text-sidebar-foreground/50 shrink-0" />
                 </>
               )}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
               <Settings className="mr-2 h-4 w-4" />
               Setări cont
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Deconectare
             </DropdownMenuItem>
