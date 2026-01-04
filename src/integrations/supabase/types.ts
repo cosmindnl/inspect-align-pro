@@ -226,6 +226,7 @@ export type Database = {
       equipment: {
         Row: {
           category: string | null
+          certificate_url: string | null
           company_id: string
           created_at: string | null
           id: string
@@ -241,6 +242,7 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          certificate_url?: string | null
           company_id: string
           created_at?: string | null
           id?: string
@@ -256,6 +258,7 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          certificate_url?: string | null
           company_id?: string
           created_at?: string | null
           id?: string

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,8 +28,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, FileText, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Equipment,
   useCreateEquipment,
@@ -66,6 +67,12 @@ export function EquipmentFormDialog({
   const createEquipment = useCreateEquipment();
   const updateEquipment = useUpdateEquipment();
   const isEditing = !!equipment;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  const [existingCertificateUrl, setExistingCertificateUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [removeCertificate, setRemoveCertificate] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -84,6 +91,9 @@ export function EquipmentFormDialog({
 
   useEffect(() => {
     if (open) {
+      setCertificateFile(null);
+      setRemoveCertificate(false);
+      
       if (equipment) {
         form.reset({
           name: equipment.name,
@@ -96,6 +106,7 @@ export function EquipmentFormDialog({
           notes: equipment.notes || "",
           is_active: equipment.is_active ?? true,
         });
+        setExistingCertificateUrl(equipment.certificate_url);
       } else {
         form.reset({
           name: "",
@@ -108,12 +119,52 @@ export function EquipmentFormDialog({
           notes: "",
           is_active: true,
         });
+        setExistingCertificateUrl(null);
       }
     }
   }, [open, equipment, form]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("Fișierul este prea mare. Maxim 10MB.");
+        return;
+      }
+      setCertificateFile(file);
+      setRemoveCertificate(false);
+    }
+  };
+
+  const handleRemoveCertificate = () => {
+    setCertificateFile(null);
+    setRemoveCertificate(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const uploadCertificate = async (file: File, equipmentId: string): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${equipmentId}/${Date.now()}.${fileExt}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('equipment-certificates')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('equipment-certificates')
+      .getPublicUrl(fileName);
+
+    return publicUrl;
+  };
+
   const onSubmit = async (values: FormValues) => {
     try {
+      setIsUploading(true);
+      
       const data = {
         name: values.name,
         manufacturer: values.manufacturer || null,
@@ -124,22 +175,33 @@ export function EquipmentFormDialog({
         category: values.category || null,
         notes: values.notes || null,
         is_active: values.is_active,
+        certificate_url: removeCertificate ? null : existingCertificateUrl,
       };
 
+      let savedEquipment: Equipment;
+
       if (isEditing && equipment) {
-        await updateEquipment.mutateAsync({ id: equipment.id, ...data });
-        toast.success("Echipamentul a fost actualizat");
+        savedEquipment = await updateEquipment.mutateAsync({ id: equipment.id, ...data });
       } else {
-        await createEquipment.mutateAsync(data);
-        toast.success("Echipamentul a fost adăugat");
+        savedEquipment = await createEquipment.mutateAsync(data);
       }
+
+      // Upload certificate if a new file was selected
+      if (certificateFile) {
+        const certificateUrl = await uploadCertificate(certificateFile, savedEquipment.id);
+        await updateEquipment.mutateAsync({ id: savedEquipment.id, certificate_url: certificateUrl });
+      }
+
+      toast.success(isEditing ? "Echipamentul a fost actualizat" : "Echipamentul a fost adăugat");
       onOpenChange(false);
     } catch (error: any) {
       toast.error("Eroare: " + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
-  const isPending = createEquipment.isPending || updateEquipment.isPending;
+  const isPending = createEquipment.isPending || updateEquipment.isPending || isUploading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -255,6 +317,99 @@ export function EquipmentFormDialog({
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Certificate Upload */}
+            <div className="space-y-2">
+              <FormLabel>Certificat verificare (PDF/imagine)</FormLabel>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+              />
+              
+              {!certificateFile && !existingCertificateUrl && !removeCertificate && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Încarcă certificat
+                </Button>
+              )}
+
+              {certificateFile && (
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span className="flex-1 text-sm truncate">{certificateFile.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={handleRemoveCertificate}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {existingCertificateUrl && !certificateFile && !removeCertificate && (
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span className="flex-1 text-sm">Certificat încărcat</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    asChild
+                  >
+                    <a href={existingCertificateUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive"
+                    onClick={handleRemoveCertificate}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {removeCertificate && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Certificatul va fi șters</span>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    onClick={() => {
+                      setRemoveCertificate(false);
+                      setExistingCertificateUrl(equipment?.certificate_url || null);
+                    }}
+                  >
+                    Anulează
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Category */}

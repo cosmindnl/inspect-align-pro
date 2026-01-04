@@ -11,6 +11,7 @@ export interface Equipment {
   serial_number: string | null;
   verification_valid_until: string | null;
   verification_certificate_number: string | null;
+  certificate_url: string | null;
   category: string | null;
   notes: string | null;
   is_active: boolean | null;

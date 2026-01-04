@@ -25,7 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Pencil, Trash2, AlertTriangle, CheckCircle, XCircle, Loader2, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, AlertTriangle, CheckCircle, XCircle, Loader2, Download, FileSpreadsheet, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Equipment, useEquipment, useDeleteEquipment } from "@/hooks/useEquipment";
 import { EquipmentFormDialog } from "./EquipmentFormDialog";
@@ -258,11 +258,24 @@ export function EquipmentManager() {
                           <p className="text-sm">
                             {format(parseISO(eq.verification_valid_until), "dd MMM yyyy", { locale: ro })}
                           </p>
-                          {eq.verification_certificate_number && (
-                            <p className="text-xs text-muted-foreground">
-                              Cert: {eq.verification_certificate_number}
-                            </p>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {eq.verification_certificate_number && (
+                              <span className="text-xs text-muted-foreground">
+                                Cert: {eq.verification_certificate_number}
+                              </span>
+                            )}
+                            {eq.certificate_url && (
+                              <a
+                                href={eq.certificate_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Vezi
+                              </a>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
