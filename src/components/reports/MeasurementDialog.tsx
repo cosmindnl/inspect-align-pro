@@ -217,6 +217,29 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
     }
   };
 
+  // Watch value and limit_value for auto-conformity calculation
+  const watchedValue = form.watch("value");
+  const watchedLimit = form.watch("limit_value");
+  const watchedType = form.watch("measurement_type");
+
+  useEffect(() => {
+    // Only auto-calculate if both value and limit are provided
+    if (watchedValue && watchedLimit) {
+      const numValue = parseFloat(watchedValue);
+      const numLimit = parseFloat(watchedLimit);
+      
+      if (!isNaN(numValue) && !isNaN(numLimit)) {
+        // For most measurements, value should be <= limit to be conformant
+        // For insulation resistance, value should be >= limit (higher is better)
+        const isConformant = watchedType === "insulation" 
+          ? numValue >= numLimit 
+          : numValue <= numLimit;
+        
+        form.setValue("is_conformant", isConformant);
+      }
+    }
+  }, [watchedValue, watchedLimit, watchedType, form]);
+
   useEffect(() => {
     if (open) {
       if (measurement) {
