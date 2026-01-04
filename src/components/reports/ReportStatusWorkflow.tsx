@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUpdateReport } from "@/hooks/useReports";
+import { useCreateAuditLog } from "@/hooks/useAuditLogs";
 import { toast } from "sonner";
 
 type ReportStatus = "draft" | "validated" | "signed" | "archived";
@@ -88,6 +89,7 @@ export function ReportStatusWorkflow({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<ReportStatus | null>(null);
   const updateReport = useUpdateReport();
+  const createAuditLog = useCreateAuditLog();
 
   const currentConfig = statusConfig[currentStatus];
   const currentIndex = statusOrder.indexOf(currentStatus);
@@ -132,6 +134,16 @@ export function ReportStatusWorkflow({
         ...(validated_at !== undefined && { validated_at }),
         ...(signed_at !== undefined && { signed_at })
       });
+
+      // Create audit log for status change
+      await createAuditLog.mutateAsync({
+        action: "status_change",
+        table_name: "reports",
+        record_id: reportId,
+        old_values: { status: currentStatus },
+        new_values: { status: pendingStatus },
+      });
+
       toast.success(`Statusul a fost schimbat în "${statusConfig[pendingStatus].label}"`);
       onStatusChange?.(pendingStatus);
     } catch (error: any) {

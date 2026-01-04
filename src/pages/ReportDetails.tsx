@@ -42,6 +42,7 @@ import { useCompany } from "@/hooks/useCompany";
 import { EditReportDialog } from "@/components/reports/EditReportDialog";
 import { MeasurementDialog } from "@/components/reports/MeasurementDialog";
 import { ReportStatusWorkflow } from "@/components/reports/ReportStatusWorkflow";
+import { ReportAuditLog } from "@/components/reports/ReportAuditLog";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
 import { generateReportPDF } from "@/lib/generateReportPDF";
 import { format } from "date-fns";
@@ -459,6 +460,9 @@ const ReportDetails = () => {
                 )}
               </CardContent>
             </Card>
+
+            {/* Audit Log */}
+            <ReportAuditLog reportId={report.id} />
 
             {/* Timestamps */}
             <Card>
