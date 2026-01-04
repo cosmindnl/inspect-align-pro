@@ -25,6 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SignatureUpload } from "@/components/settings/SignatureUpload";
 import { EquipmentManager } from "@/components/settings/EquipmentManager";
+import { ConformityRulesManager } from "@/components/settings/ConformityRulesManager";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -454,6 +455,9 @@ const Settings = () => {
         <TabsContent value="equipment">
           <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl">
             <EquipmentManager />
+          </div>
+          <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl mt-6">
+            <ConformityRulesManager />
           </div>
         </TabsContent>
 
