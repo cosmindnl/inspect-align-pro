@@ -16,21 +16,25 @@ import {
   Trash2,
   Loader2,
   ImageIcon,
-  Wrench
+  Wrench,
+  Users
 } from "lucide-react";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useCompany, useUpdateCompany } from "@/hooks/useCompany";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SignatureUpload } from "@/components/settings/SignatureUpload";
 import { EquipmentManager } from "@/components/settings/EquipmentManager";
 import { ConformityRulesManager } from "@/components/settings/ConformityRulesManager";
+import { UserRolesManager } from "@/components/settings/UserRolesManager";
 
 const Settings = () => {
   const { user } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: company, isLoading: companyLoading } = useCompany();
+  const { data: userRole } = useUserRole();
   const updateProfile = useUpdateProfile();
   const updateCompany = useUpdateCompany();
   
@@ -198,7 +202,7 @@ const Settings = () => {
       subtitle="Configurează preferințele aplicației"
     >
       <Tabs defaultValue="profile" className="animate-fade-in">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-wrap">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profil
@@ -211,6 +215,12 @@ const Settings = () => {
             <Wrench className="h-4 w-4" />
             Echipamente
           </TabsTrigger>
+          {userRole?.isAdmin && (
+            <TabsTrigger value="admin" className="gap-2">
+              <Users className="h-4 w-4" />
+              Administrare
+            </TabsTrigger>
+          )}
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
             Notificări
@@ -460,6 +470,14 @@ const Settings = () => {
             <ConformityRulesManager />
           </div>
         </TabsContent>
+
+        {userRole?.isAdmin && (
+          <TabsContent value="admin">
+            <div className="rounded-xl bg-card p-6 shadow-card max-w-4xl">
+              <UserRolesManager />
+            </div>
+          </TabsContent>
+        )}
 
         <TabsContent value="notifications">
           <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl">
