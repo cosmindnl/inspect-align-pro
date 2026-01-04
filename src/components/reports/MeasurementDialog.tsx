@@ -44,21 +44,12 @@ import { toast } from "sonner";
 import { useCreateMeasurement, useUpdateMeasurement } from "@/hooks/useMeasurements";
 import { Database } from "@/integrations/supabase/types";
 import { cn } from "@/lib/utils";
+import { getConformityRule, measurementTypes } from "@/components/settings/ConformityRulesManager";
 
 type Measurement = Database['public']['Tables']['measurements']['Row'];
 
-const measurementTypes = [
-  { value: "resistance", label: "Rezistență de dispersie (Ω)" },
-  { value: "insulation", label: "Rezistență de izolație (MΩ)" },
-  { value: "continuity", label: "Continuitate (Ω)" },
-  { value: "loop_impedance", label: "Impedanță buclă (Ω)" },
-  { value: "rcd_time", label: "Timp declanșare RCD (ms)" },
-  { value: "rcd_current", label: "Curent declanșare RCD (mA)" },
-  { value: "voltage", label: "Tensiune (V)" },
-  { value: "current", label: "Curent (A)" },
-  { value: "power", label: "Putere (kW)" },
-  { value: "other", label: "Altele" },
-];
+// Re-export measurementTypes for backwards compatibility
+export { measurementTypes } from "@/components/settings/ConformityRulesManager";
 
 // Default units that can be extended by user
 const defaultUnits = [
@@ -224,14 +215,14 @@ export function MeasurementDialog({ open, onOpenChange, reportId, measurement }:
 
   useEffect(() => {
     // Only auto-calculate if both value and limit are provided
-    if (watchedValue && watchedLimit) {
+    if (watchedValue && watchedLimit && watchedType) {
       const numValue = parseFloat(watchedValue);
       const numLimit = parseFloat(watchedLimit);
       
       if (!isNaN(numValue) && !isNaN(numLimit)) {
-        // For most measurements, value should be <= limit to be conformant
-        // For insulation resistance, value should be >= limit (higher is better)
-        const isConformant = watchedType === "insulation" 
+        // Get the conformity rule from settings
+        const rule = getConformityRule(watchedType);
+        const isConformant = rule === "gte" 
           ? numValue >= numLimit 
           : numValue <= numLimit;
         
