@@ -25,6 +25,7 @@ import { useClients } from "@/hooks/useClients";
 import { useProfile } from "@/hooks/useProfile";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
+import { ClientSitesDialog } from "@/components/sites/ClientSitesDialog";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
 
@@ -34,6 +35,7 @@ const Clients = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isSitesOpen, setIsSitesOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const { data: clients, isLoading, error } = useClients();
   const { data: profile } = useProfile();
@@ -64,6 +66,11 @@ const Clients = () => {
     }
     setSelectedClient(client);
     setIsFormOpen(true);
+  };
+
+  const handleViewSites = (client: Client) => {
+    setSelectedClient(client);
+    setIsSitesOpen(true);
   };
 
   const handleViewReports = (clientId: string) => {
@@ -159,6 +166,9 @@ const Clients = () => {
                     <DropdownMenuItem onClick={() => handleEditClient(client)}>
                       Editează
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleViewSites(client)}>
+                      Locații
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleViewReports(client.id)}>
                       Vezi rapoarte
                     </DropdownMenuItem>
@@ -224,6 +234,12 @@ const Clients = () => {
       <DeleteClientDialog
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
+        client={selectedClient}
+      />
+
+      <ClientSitesDialog
+        open={isSitesOpen}
+        onOpenChange={setIsSitesOpen}
         client={selectedClient}
       />
     </AppLayout>
