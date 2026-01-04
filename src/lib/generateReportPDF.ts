@@ -51,6 +51,17 @@ interface Measurement {
   measurement_method: string | null;
 }
 
+interface CompanyData {
+  name: string;
+  logo_url: string | null;
+  address: string | null;
+  city: string | null;
+  phone: string | null;
+  email: string | null;
+  cui: string | null;
+  anre_certificate_number: string | null;
+}
+
 const typeLabels = {
   ground: 'Buletin de Verificare - Priză de Pământ',
   electrical: 'Raport de Verificare - Instalație Electrică',
@@ -73,7 +84,27 @@ const formatDate = (dateStr: string | null): string => {
   }
 };
 
-export function generateReportPDF(report: ReportData, measurements: Measurement[] = []) {
+// Helper function to load image as base64
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function generateReportPDF(
+  report: ReportData, 
+  measurements: Measurement[] = [],
+  company?: CompanyData | null
+) {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;
@@ -88,34 +119,88 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, pageWidth, 8, 'F');
 
+  // Company Logo and Info
+  let logoLoaded = false;
+  if (company?.logo_url) {
+    try {
+      const logoBase64 = await loadImageAsBase64(company.logo_url);
+      if (logoBase64) {
+        // Add logo on the left
+        doc.addImage(logoBase64, 'AUTO', margin, 12, 30, 30);
+        logoLoaded = true;
+      }
+    } catch (e) {
+      console.log('Could not load company logo:', e);
+    }
+  }
+
+  // Company info on the right (or centered if no logo)
+  if (company) {
+    const companyInfoX = logoLoaded ? pageWidth - margin : pageWidth / 2;
+    const companyAlign = logoLoaded ? 'right' : 'center';
+    
+    yPos = 15;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(...textColor);
+    doc.text(company.name, companyInfoX, yPos, { align: companyAlign as any });
+    
+    yPos += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...mutedColor);
+    
+    if (company.address || company.city) {
+      doc.text([company.address, company.city].filter(Boolean).join(', '), companyInfoX, yPos, { align: companyAlign as any });
+      yPos += 4;
+    }
+    if (company.phone) {
+      doc.text(`Tel: ${company.phone}`, companyInfoX, yPos, { align: companyAlign as any });
+      yPos += 4;
+    }
+    if (company.email) {
+      doc.text(company.email, companyInfoX, yPos, { align: companyAlign as any });
+      yPos += 4;
+    }
+    if (company.cui) {
+      doc.text(`CUI: ${company.cui}`, companyInfoX, yPos, { align: companyAlign as any });
+      yPos += 4;
+    }
+    if (company.anre_certificate_number) {
+      doc.text(`ANRE: ${company.anre_certificate_number}`, companyInfoX, yPos, { align: companyAlign as any });
+    }
+    
+    yPos = logoLoaded ? 48 : 45;
+  }
+
   // Title
-  yPos = 25;
+  yPos = company ? (logoLoaded ? 50 : 48) : 25;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setTextColor(...textColor);
   doc.text(typeLabels[report.report_type], pageWidth / 2, yPos, { align: 'center' });
 
   // Report Number
-  yPos += 10;
+  yPos += 8;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(...mutedColor);
   doc.text(`Nr. ${report.report_number || 'N/A'}`, pageWidth / 2, yPos, { align: 'center' });
 
   // Separator line
-  yPos += 10;
+  yPos += 8;
   doc.setDrawColor(229, 231, 235);
   doc.setLineWidth(0.5);
   doc.line(margin, yPos, pageWidth - margin, yPos);
 
   // Client & Site Information
-  yPos += 15;
+  yPos += 12;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...primaryColor);
   doc.text('INFORMAȚII CLIENT', margin, yPos);
 
-  yPos += 8;
+  yPos += 7;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...textColor);
@@ -125,19 +210,19 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
   const siteAddress = [report.sites?.address, report.sites?.city].filter(Boolean).join(', ') || '—';
 
   doc.text(`Client: ${clientName}`, margin, yPos);
-  yPos += 6;
+  yPos += 5;
   doc.text(`Locație: ${siteName}`, margin, yPos);
-  yPos += 6;
+  yPos += 5;
   doc.text(`Adresă: ${siteAddress}`, margin, yPos);
 
   // Inspection Details
-  yPos += 15;
+  yPos += 12;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...primaryColor);
   doc.text('DETALII INSPECȚIE', margin, yPos);
 
-  yPos += 8;
+  yPos += 7;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...textColor);
@@ -156,12 +241,12 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
 
   doc.text(`Data inspecției: ${inspectionDate}`, col1X, yPos);
   doc.text(`Inginer: ${engineerName}`, col2X, yPos);
-  yPos += 6;
+  yPos += 5;
   doc.text(`Status: ${status}`, col1X, yPos);
   doc.text(`Conformitate: ${conformity}`, col2X, yPos);
   
   if (report.ambient_temperature !== null) {
-    yPos += 6;
+    yPos += 5;
     doc.text(`Temperatură ambientală: ${report.ambient_temperature}°C`, col1X, yPos);
   }
   
@@ -171,7 +256,7 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
 
   // Measurements Table
   if (measurements.length > 0) {
-    yPos += 15;
+    yPos += 12;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...primaryColor);
@@ -186,7 +271,7 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
     ]);
 
     doc.autoTable({
-      startY: yPos + 5,
+      startY: yPos + 4,
       head: [['Tip Măsurătoare', 'Valoare', 'Limită', 'Locație', 'Conformitate']],
       body: tableData,
       margin: { left: margin, right: margin },
@@ -208,7 +293,7 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
       },
     });
 
-    yPos = doc.lastAutoTable.finalY + 10;
+    yPos = doc.lastAutoTable.finalY + 8;
   }
 
   // Check if we need a new page
@@ -219,20 +304,20 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
 
   // Observations
   if (report.observations) {
-    yPos += 5;
+    yPos += 4;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...primaryColor);
     doc.text('OBSERVAȚII', margin, yPos);
 
-    yPos += 8;
+    yPos += 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(...textColor);
     
     const observationLines = doc.splitTextToSize(report.observations, pageWidth - 2 * margin);
     doc.text(observationLines, margin, yPos);
-    yPos += observationLines.length * 5 + 5;
+    yPos += observationLines.length * 5 + 4;
   }
 
   // Recommendations
@@ -242,13 +327,13 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
       yPos = 20;
     }
 
-    yPos += 5;
+    yPos += 4;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...primaryColor);
     doc.text('RECOMANDĂRI', margin, yPos);
 
-    yPos += 8;
+    yPos += 6;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(...textColor);
@@ -272,7 +357,12 @@ export function generateReportPDF(report: ReportData, measurements: Measurement[
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...mutedColor);
-    doc.text(`Generat la ${format(new Date(), 'd MMMM yyyy, HH:mm', { locale: ro })}`, margin, pageHeight - 12);
+    
+    const footerLeft = company?.name 
+      ? `${company.name} | Generat la ${format(new Date(), 'd MMMM yyyy, HH:mm', { locale: ro })}`
+      : `Generat la ${format(new Date(), 'd MMMM yyyy, HH:mm', { locale: ro })}`;
+    
+    doc.text(footerLeft, margin, pageHeight - 12);
     doc.text(`Pagina ${i} din ${pageCount}`, pageWidth - margin, pageHeight - 12, { align: 'right' });
   }
 

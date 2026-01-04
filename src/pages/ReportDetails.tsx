@@ -36,6 +36,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useReport, useDeleteReport } from "@/hooks/useReports";
 import { useMeasurements, useDeleteMeasurement } from "@/hooks/useMeasurements";
+import { useCompany } from "@/hooks/useCompany";
 import { EditReportDialog } from "@/components/reports/EditReportDialog";
 import { MeasurementDialog } from "@/components/reports/MeasurementDialog";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
@@ -69,6 +70,7 @@ const ReportDetails = () => {
 
   const { data: report, isLoading: reportLoading } = useReport(id || "");
   const { data: measurements, isLoading: measurementsLoading } = useMeasurements(id || "");
+  const { data: company } = useCompany();
   const deleteReport = useDeleteReport();
   const deleteMeasurement = useDeleteMeasurement();
 
@@ -76,7 +78,7 @@ const ReportDetails = () => {
     if (!report) return;
     setIsGeneratingPDF(true);
     try {
-      generateReportPDF(report as any, measurements || []);
+      await generateReportPDF(report as any, measurements || [], company);
       toast.success("PDF generat cu succes");
     } catch (error: any) {
       toast.error("Eroare la generarea PDF: " + error.message);
