@@ -30,7 +30,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -44,7 +43,6 @@ import {
   Zap,
   Building2,
   Sun,
-  ArrowRight,
   MapPin,
   User,
   Calendar,
@@ -54,9 +52,9 @@ import {
   FileX
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useReports, ReportWithRelations } from "@/hooks/useReports";
+import { NewReportDialog } from "@/components/reports/NewReportDialog";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 
@@ -73,35 +71,6 @@ const statusLabels = {
   archived: "Arhivat",
 };
 
-const reportTypes = [
-  {
-    type: "ground",
-    title: "Priză de Pământ",
-    description: "Buletin verificare conform IEC 61557",
-    icon: Zap,
-    href: "/reports/ground/new",
-    gradient: "from-warning/20 to-warning/5",
-    iconBg: "bg-warning/20 text-warning",
-  },
-  {
-    type: "electrical",
-    title: "Instalație Electrică",
-    description: "Raport verificare IEC 60364",
-    icon: Building2,
-    href: "/reports/electrical/new",
-    gradient: "from-primary/20 to-primary/5",
-    iconBg: "bg-primary/20 text-primary",
-  },
-  {
-    type: "solar",
-    title: "Sistem Fotovoltaic",
-    description: "Verificare conform IEC 62446",
-    icon: Sun,
-    href: "/reports/solar/new",
-    gradient: "from-accent/20 to-accent/5",
-    iconBg: "bg-accent/20 text-accent",
-  },
-];
 
 const Reports = () => {
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
@@ -110,7 +79,6 @@ const Reports = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const navigate = useNavigate();
 
   const { data: reports, isLoading, error } = useReports();
 
@@ -126,10 +94,6 @@ const Reports = () => {
     return matchesSearch && matchesType && matchesStatus;
   }) ?? [];
 
-  const handleSelectReportType = (href: string, title: string) => {
-    setIsNewReportOpen(false);
-    toast.info(`Se deschide formularul pentru ${title}...`);
-  };
 
   const handleViewReport = (report: ReportWithRelations) => {
     setSelectedReport(report);
@@ -362,38 +326,7 @@ const Reports = () => {
       </AppLayout>
 
       {/* New Report Dialog */}
-      <Dialog open={isNewReportOpen} onOpenChange={setIsNewReportOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Creare Raport Nou</DialogTitle>
-            <DialogDescription>
-              Selectează tipul de verificare pentru noul raport
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 pt-4">
-            {reportTypes.map((reportType) => (
-              <button
-                key={reportType.type}
-                onClick={() => handleSelectReportType(reportType.href, reportType.title)}
-                className={cn(
-                  "group w-full flex items-center gap-4 rounded-lg p-4 text-left transition-all",
-                  "bg-gradient-to-r hover:shadow-md",
-                  reportType.gradient
-                )}
-              >
-                <div className={cn("flex h-12 w-12 items-center justify-center rounded-lg", reportType.iconBg)}>
-                  <reportType.icon className="h-6 w-6" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{reportType.title}</p>
-                  <p className="text-sm text-muted-foreground">{reportType.description}</p>
-                </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-1" />
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <NewReportDialog open={isNewReportOpen} onOpenChange={setIsNewReportOpen} />
 
       {/* View Report Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
