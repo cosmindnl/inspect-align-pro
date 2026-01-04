@@ -1,158 +1,258 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Wrench } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Plus, Pencil, Trash2, AlertTriangle, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Equipment, useEquipment, useDeleteEquipment } from "@/hooks/useEquipment";
+import { EquipmentFormDialog } from "./EquipmentFormDialog";
+import { format, differenceInDays, parseISO } from "date-fns";
+import { ro } from "date-fns/locale";
 
-// Default equipment list
-export const defaultEquipment = [
-  "Fluke 1664FC",
-  "Fluke 1663",
-  "Fluke 1662",
-  "Metrel MI 3152",
-  "Metrel MI 3155",
-  "Megger MIT515",
-  "Megger MFT1845",
-  "Sonel MPI-530",
-  "Sonel MPI-525",
-  "Kyoritsu KEW 6016",
-  "Kyoritsu KEW 4106",
-  "Hioki IR4056",
-  "Chauvin Arnoux CA 6117",
-  "Amprobe Telaris 0100",
-];
-
-// Storage key for custom equipment
-export const CUSTOM_EQUIPMENT_KEY = 'measurement_custom_equipment';
-
-export function getStoredCustomEquipment(): string[] {
-  try {
-    const stored = localStorage.getItem(CUSTOM_EQUIPMENT_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
+function getVerificationStatus(validUntil: string | null) {
+  if (!validUntil) return { status: "unknown", label: "Nespecificat", variant: "outline" as const };
+  
+  const today = new Date();
+  const expiryDate = parseISO(validUntil);
+  const daysUntilExpiry = differenceInDays(expiryDate, today);
+  
+  if (daysUntilExpiry < 0) {
+    return { status: "expired", label: "Expirat", variant: "destructive" as const };
+  } else if (daysUntilExpiry <= 30) {
+    return { status: "expiring", label: `Expiră în ${daysUntilExpiry} zile`, variant: "warning" as const };
+  } else {
+    return { status: "valid", label: "Valid", variant: "success" as const };
   }
 }
 
-export function saveCustomEquipment(equipment: string[]) {
-  localStorage.setItem(CUSTOM_EQUIPMENT_KEY, JSON.stringify(equipment));
-}
-
 export function EquipmentManager() {
-  const [customEquipment, setCustomEquipment] = useState<string[]>(getStoredCustomEquipment());
-  const [newEquipment, setNewEquipment] = useState("");
+  const { data: equipment, isLoading } = useEquipment();
+  const deleteEquipment = useDeleteEquipment();
+  
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
 
-  const handleAddEquipment = () => {
-    const trimmed = newEquipment.trim();
-    if (!trimmed) {
-      toast.error("Introduceți denumirea echipamentului");
-      return;
-    }
+  const handleEdit = (eq: Equipment) => {
+    setEditingEquipment(eq);
+    setFormOpen(true);
+  };
+
+  const handleDelete = (eq: Equipment) => {
+    setEquipmentToDelete(eq);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!equipmentToDelete) return;
     
-    const allEquipment = [...defaultEquipment, ...customEquipment];
-    if (allEquipment.some(e => e.toLowerCase() === trimmed.toLowerCase())) {
-      toast.error("Acest echipament există deja");
-      return;
-    }
-
-    const updated = [...customEquipment, trimmed];
-    setCustomEquipment(updated);
-    saveCustomEquipment(updated);
-    setNewEquipment("");
-    toast.success(`Echipamentul "${trimmed}" a fost adăugat`);
-  };
-
-  const handleRemoveEquipment = (equipment: string) => {
-    const updated = customEquipment.filter(e => e !== equipment);
-    setCustomEquipment(updated);
-    saveCustomEquipment(updated);
-    toast.success(`Echipamentul "${equipment}" a fost șters`);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddEquipment();
+    try {
+      await deleteEquipment.mutateAsync(equipmentToDelete.id);
+      toast.success("Echipamentul a fost șters");
+      setDeleteDialogOpen(false);
+      setEquipmentToDelete(null);
+    } catch (error: any) {
+      toast.error("Eroare la ștergere: " + error.message);
     }
   };
+
+  const handleFormClose = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) {
+      setEditingEquipment(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Echipamente de Măsură</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Gestionează lista de echipamente de măsură disponibile pentru rapoarte. 
-          Echipamentele personalizate vor fi disponibile în dialogul de adăugare măsurători.
-        </p>
-      </div>
-
-      {/* Add new equipment */}
-      <div className="space-y-2">
-        <Label htmlFor="newEquipment">Adaugă echipament nou</Label>
-        <div className="flex gap-2">
-          <Input
-            id="newEquipment"
-            value={newEquipment}
-            onChange={(e) => setNewEquipment(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ex: Fluke 1664FC"
-            className="flex-1"
-          />
-          <Button onClick={handleAddEquipment} variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Adaugă
-          </Button>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Echipamente de Măsură</h3>
+          <p className="text-sm text-muted-foreground">
+            Gestionează lista de echipamente de măsură și verificările metrologice.
+          </p>
         </div>
+        <Button onClick={() => setFormOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Adaugă echipament
+        </Button>
       </div>
 
-      {/* Custom equipment list */}
-      {customEquipment.length > 0 && (
-        <div className="space-y-3">
-          <Label>Echipamente personalizate</Label>
-          <div className="flex flex-wrap gap-2">
-            {customEquipment.map((equipment) => (
-              <Badge 
-                key={equipment} 
-                variant="secondary"
-                className="pl-3 pr-1 py-1.5 text-sm flex items-center gap-1"
-              >
-                <Wrench className="h-3 w-3 mr-1" />
-                {equipment}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-5 w-5 ml-1 hover:bg-destructive/20 hover:text-destructive"
-                  onClick={() => handleRemoveEquipment(equipment)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </Badge>
-            ))}
-          </div>
+      {equipment && equipment.length > 0 ? (
+        <div className="border rounded-lg">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Denumire</TableHead>
+                <TableHead>Număr serie</TableHead>
+                <TableHead>Verificare metrologică</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">Acțiuni</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {equipment.map((eq) => {
+                const verificationStatus = getVerificationStatus(eq.verification_valid_until);
+                return (
+                  <TableRow key={eq.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{eq.name}</p>
+                        {(eq.manufacturer || eq.model) && (
+                          <p className="text-sm text-muted-foreground">
+                            {[eq.manufacturer, eq.model].filter(Boolean).join(" - ")}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {eq.serial_number || (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {eq.verification_valid_until ? (
+                        <div className="space-y-1">
+                          <p className="text-sm">
+                            {format(parseISO(eq.verification_valid_until), "dd MMM yyyy", { locale: ro })}
+                          </p>
+                          {eq.verification_certificate_number && (
+                            <p className="text-xs text-muted-foreground">
+                              Cert: {eq.verification_certificate_number}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {verificationStatus.status === "expired" && (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                        {verificationStatus.status === "expiring" && (
+                          <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                        )}
+                        {verificationStatus.status === "valid" && (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                        <Badge
+                          variant={
+                            verificationStatus.variant === "success"
+                              ? "default"
+                              : verificationStatus.variant === "warning"
+                              ? "secondary"
+                              : verificationStatus.variant
+                          }
+                          className={
+                            verificationStatus.variant === "success"
+                              ? "bg-green-100 text-green-800 hover:bg-green-100"
+                              : verificationStatus.variant === "warning"
+                              ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                              : ""
+                          }
+                        >
+                          {verificationStatus.label}
+                        </Badge>
+                        {!eq.is_active && (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            Inactiv
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(eq)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(eq)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <div className="text-center py-12 border rounded-lg bg-muted/50">
+          <p className="text-muted-foreground mb-4">
+            Nu ai adăugat niciun echipament încă.
+          </p>
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Adaugă primul echipament
+          </Button>
         </div>
       )}
 
-      {/* Default equipment list */}
-      <div className="space-y-3">
-        <Label className="text-muted-foreground">Echipamente predefinite</Label>
-        <div className="flex flex-wrap gap-2">
-          {defaultEquipment.map((equipment) => (
-            <Badge 
-              key={equipment} 
-              variant="outline"
-              className="py-1.5 text-sm text-muted-foreground"
+      <EquipmentFormDialog
+        open={formOpen}
+        onOpenChange={handleFormClose}
+        equipment={editingEquipment}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Șterge echipament</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ești sigur că vrei să ștergi echipamentul "{equipmentToDelete?.name}"?
+              Această acțiune nu poate fi anulată.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anulează</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <Wrench className="h-3 w-3 mr-1.5" />
-              {equipment}
-            </Badge>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Acestea sunt echipamente predefinite și nu pot fi șterse.
-        </p>
-      </div>
+              {deleteEquipment.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Șterge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
