@@ -274,6 +274,53 @@ export type Database = {
         }
         Relationships: []
       }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          company_id: string
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id: string
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          company_id?: string
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       measurements: {
         Row: {
           created_at: string | null
