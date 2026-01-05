@@ -13,6 +13,8 @@ export function ProtectedRoute({ children, requiresOnboarding = true }: Protecte
   const location = useLocation();
 
   const isLoading = authLoading || (user && profileLoading);
+  const searchParams = new URLSearchParams(location.search);
+  const hasInvitationToken = !!searchParams.get('invitation');
 
   if (isLoading) {
     return (
@@ -23,11 +25,17 @@ export function ProtectedRoute({ children, requiresOnboarding = true }: Protecte
   }
 
   if (!user) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    // Preserve invitation token (if any) so invited users land on the correct flow.
+    return <Navigate to={`/auth${location.search || ''}`} state={{ from: location }} replace />;
   }
 
   // Redirect to onboarding if user doesn't have a company (except on onboarding page)
   if (requiresOnboarding && profile && !profile.company_id && location.pathname !== "/onboarding") {
+    // If there's an invitation token in the URL, route to the invitation flow instead of company onboarding.
+    if (hasInvitationToken) {
+      return <Navigate to={`/auth${location.search}`} replace />;
+    }
+
     return <Navigate to="/onboarding" replace />;
   }
 
