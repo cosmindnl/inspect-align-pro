@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +63,7 @@ const Onboarding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const invitationToken = searchParams.get('invitation');
   const { user } = useAuth();
@@ -147,9 +149,15 @@ const Onboarding = () => {
         throw roleError;
       }
 
+      // Refresh cached profile/company so route guards stop redirecting back to onboarding
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['profile', user.id] }),
+        queryClient.invalidateQueries({ queryKey: ['company', user.id] }),
+      ]);
+
       setStep(3);
       toast.success("Configurare completă!");
-      
+
       setTimeout(() => {
         navigate("/");
       }, 2000);
