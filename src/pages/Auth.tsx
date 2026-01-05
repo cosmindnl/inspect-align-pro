@@ -44,11 +44,16 @@ export default function Auth() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const invitationToken = searchParams.get('invitation');
-  
-  const { user, loading, signIn, signUp } = useAuth();
+
+  const { user, loading, signIn, signUp, signOut } = useAuth();
   const { data: invitation, isLoading: invitationLoading } = useInvitationByToken(invitationToken);
   const acceptInvitation = useAcceptInvitation();
-  
+
+  const invitationEmail = (invitation?.email || '').toLowerCase();
+  const currentUserEmail = (user?.email || '').toLowerCase();
+  const isWrongUserForInvitation =
+    !!invitationToken && !!user && !!invitation?.email && !!user?.email && invitationEmail !== currentUserEmail;
+
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>(invitationToken ? 'signup' : 'login');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,7 +79,14 @@ export default function Auth() {
   // Handle accepting invitation after signup/login
   useEffect(() => {
     const acceptInvitationIfNeeded = async () => {
-      if (user && invitationToken && invitation && !acceptInvitation.isPending && !acceptInvitation.isSuccess) {
+      if (
+        user &&
+        invitationToken &&
+        invitation &&
+        !isWrongUserForInvitation &&
+        !acceptInvitation.isPending &&
+        !acceptInvitation.isSuccess
+      ) {
         try {
           await acceptInvitation.mutateAsync({ token: invitationToken, userId: user.id });
           // Show welcome toast notification
@@ -91,9 +103,17 @@ export default function Auth() {
         }
       }
     };
-    
+
     acceptInvitationIfNeeded();
-  }, [user, invitationToken, invitation, acceptInvitation.isPending, acceptInvitation.isSuccess, navigate]);
+  }, [
+    user,
+    invitationToken,
+    invitation,
+    isWrongUserForInvitation,
+    acceptInvitation.isPending,
+    acceptInvitation.isSuccess,
+    navigate,
+  ]);
 
   // Redirect logged-in users without invitation to home
   useEffect(() => {
@@ -159,6 +179,52 @@ export default function Auth() {
     );
   }
 
+  // If user is already logged in with a different email than the invitation, ask them to switch accounts
+  if (invitationToken && invitation && user && isWrongUserForInvitation) {
+    const handleSwitchAccount = async () => {
+      setError(null);
+      setIsSubmitting(true);
+      try {
+        await signOut();
+        setActiveTab('signup');
+      } catch (err) {
+        console.error('Failed to sign out:', err);
+        setError('Nu am putut face delogarea. Te rugăm să încerci din nou.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle>Schimbă contul</CardTitle>
+            <CardDescription>
+              Invitația este pentru <strong>{invitation.email}</strong>, dar ești autentificat ca{' '}
+              <strong>{user.email}</strong>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button className="w-full" onClick={handleSwitchAccount} disabled={isSubmitting}>
+              {isSubmitting ? 'Se deloghează...' : 'Deloghează-mă și continuă'}
+            </Button>
+            <Button className="w-full" variant="outline" onClick={() => navigate('/', { replace: true })}>
+              Mergi la aplicație
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Show invalid invitation message
   if (invitationToken && !invitation) {
     return (
@@ -171,9 +237,7 @@ export default function Auth() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <Button onClick={() => navigate('/auth')}>
-              Mergi la autentificare
-            </Button>
+            <Button onClick={() => navigate('/auth')}>Mergi la autentificare</Button>
           </CardContent>
         </Card>
       </div>

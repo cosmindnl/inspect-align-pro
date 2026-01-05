@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -62,7 +62,16 @@ const Onboarding = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const invitationToken = searchParams.get('invitation');
   const { user } = useAuth();
+
+  // If someone arrives here with an invitation token, they should complete user creation/acceptance flow first.
+  useEffect(() => {
+    if (invitationToken) {
+      navigate(`/auth?invitation=${invitationToken}`, { replace: true });
+    }
+  }, [invitationToken, navigate]);
 
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companySchema),
