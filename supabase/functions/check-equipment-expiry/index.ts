@@ -251,18 +251,50 @@ const handler = async (req: Request): Promise<Response> => {
         });
         
         const emailResult = await emailResponse.json();
+        const equipmentIds = equipmentList.map(eq => eq.id);
         
         if (!emailResponse.ok) {
           console.error(`Error sending email for company ${company.name}:`, emailResult);
           errors.push(`${company.name}: ${JSON.stringify(emailResult)}`);
+          
+          // Log failed notification
+          await supabase.from("notification_logs").insert({
+            company_id: companyId,
+            notification_type: "equipment_expiry",
+            recipients: recipientEmails,
+            equipment_count: equipmentList.length,
+            equipment_ids: equipmentIds,
+            status: "failed",
+            error_message: JSON.stringify(emailResult),
+          });
         } else {
           emailsSent++;
           console.log(`Email sent successfully for company ${company.name}`);
+          
+          // Log successful notification
+          await supabase.from("notification_logs").insert({
+            company_id: companyId,
+            notification_type: "equipment_expiry",
+            recipients: recipientEmails,
+            equipment_count: equipmentList.length,
+            equipment_ids: equipmentIds,
+            status: "sent",
+          });
         }
         
-      } catch (companyError) {
+      } catch (companyError: any) {
         console.error(`Error processing company ${companyId}:`, companyError);
         errors.push(`Company ${companyId}: ${companyError}`);
+        
+        // Log error
+        await supabase.from("notification_logs").insert({
+          company_id: companyId,
+          notification_type: "equipment_expiry",
+          recipients: [],
+          equipment_count: 0,
+          status: "error",
+          error_message: companyError?.message || String(companyError),
+        });
       }
     }
     
