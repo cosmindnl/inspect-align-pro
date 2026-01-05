@@ -80,6 +80,7 @@ export function useCreateInvitation() {
           invitedByName,
           companyName: company?.name || 'Compania',
           invitationToken: invitation.token,
+          appUrl: window.location.origin,
         },
       });
       
@@ -138,6 +139,7 @@ export function useResendInvitation() {
           invitedByName,
           companyName: company?.name || 'Compania',
           invitationToken: invitation.token,
+          appUrl: window.location.origin,
         },
       });
       

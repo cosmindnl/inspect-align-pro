@@ -14,6 +14,7 @@ interface InvitationRequest {
   invitedByName: string;
   companyName: string;
   invitationToken: string;
+  appUrl: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -26,10 +27,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    const { email, role, invitedByName, companyName, invitationToken }: InvitationRequest = await req.json();
+    const { email, role, invitedByName, companyName, invitationToken, appUrl }: InvitationRequest = await req.json();
 
-    const appUrl = Deno.env.get("APP_URL") || req.headers.get("origin") || "https://your-app.lovable.app";
     const signupUrl = `${appUrl}/auth?invitation=${invitationToken}`;
+    console.log("Generated signup URL:", signupUrl);
 
     const roleLabels: Record<string, string> = {
       admin: "Administrator",
