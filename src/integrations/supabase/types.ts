@@ -327,6 +327,45 @@ export type Database = {
           },
         ]
       }
+      notification_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          equipment_count: number
+          equipment_ids: string[] | null
+          error_message: string | null
+          id: string
+          notification_type: string
+          recipients: string[]
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          equipment_count?: number
+          equipment_ids?: string[] | null
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          recipients: string[]
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          equipment_count?: number
+          equipment_ids?: string[] | null
+          error_message?: string | null
+          id?: string
+          notification_type?: string
+          recipients?: string[]
+          sent_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
