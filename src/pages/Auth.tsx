@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { Zap, Mail, Lock, User, ArrowRight, AlertCircle, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useInvitationByToken, useAcceptInvitation } from '@/hooks/useInvitations';
+import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,13 +71,18 @@ export default function Auth() {
     }
   }, [invitation, signupForm]);
 
-  // Handle accepting invitation after signup
   // Handle accepting invitation after signup/login
   useEffect(() => {
     const acceptInvitationIfNeeded = async () => {
       if (user && invitationToken && invitation && !acceptInvitation.isPending && !acceptInvitation.isSuccess) {
         try {
           await acceptInvitation.mutateAsync({ token: invitationToken, userId: user.id });
+          // Show welcome toast notification
+          const companyName = (invitation as any).companies?.name || 'echipă';
+          toast({
+            title: '🎉 Bine ai venit!',
+            description: `Te-ai alăturat cu succes companiei ${companyName}. Succes!`,
+          });
           // Navigate to home after successful invitation acceptance
           navigate('/', { replace: true });
         } catch (err: any) {
