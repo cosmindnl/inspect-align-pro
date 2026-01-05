@@ -29,6 +29,7 @@ import { SignatureUpload } from "@/components/settings/SignatureUpload";
 import { EquipmentManager } from "@/components/settings/EquipmentManager";
 import { ConformityRulesManager } from "@/components/settings/ConformityRulesManager";
 import { UserRolesManager } from "@/components/settings/UserRolesManager";
+import { NotificationHistory } from "@/components/settings/NotificationHistory";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -521,6 +522,12 @@ const Settings = () => {
               </div>
             </div>
           </div>
+          
+          {userRole?.isAdmin && (
+            <div className="rounded-xl bg-card p-6 shadow-card max-w-4xl mt-6">
+              <NotificationHistory />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="security">
