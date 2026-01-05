@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Zap, Mail, Lock, User, ArrowRight, AlertCircle } from 'lucide-react';
+import { Zap, Mail, Lock, User, ArrowRight, AlertCircle, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useInvitationByToken, useAcceptInvitation } from '@/hooks/useInvitations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
 const loginSchema = z.object({
   email: z.string().trim().email({ message: 'Adresa de email invalidă' }).max(255),
@@ -31,10 +33,22 @@ const signupSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 
+const roleLabels: Record<string, string> = {
+  admin: 'Administrator',
+  engineer: 'Inginer',
+  viewer: 'Vizualizator',
+};
+
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const invitationToken = searchParams.get('invitation');
+  
   const { user, loading, signIn, signUp } = useAuth();
-  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  const { data: invitation, isLoading: invitationLoading } = useInvitationByToken(invitationToken);
+  const acceptInvitation = useAcceptInvitation();
+  
+  const [activeTab, setActiveTab] = useState<'login' | 'signup'>(invitationToken ? 'signup' : 'login');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
@@ -46,15 +60,35 @@ export default function Auth() {
 
   const signupForm = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { firstName: '', lastName: '', email: '', password: '', confirmPassword: '' },
+    defaultValues: { firstName: '', lastName: '', email: invitation?.email || '', password: '', confirmPassword: '' },
   });
 
-  // Redirect authenticated users
+  // Pre-fill email from invitation
   useEffect(() => {
-    if (user && !loading) {
-      navigate('/', { replace: true });
+    if (invitation?.email) {
+      signupForm.setValue('email', invitation.email);
     }
-  }, [user, loading, navigate]);
+  }, [invitation, signupForm]);
+
+  // Handle accepting invitation after signup
+  useEffect(() => {
+    const acceptInvitationIfNeeded = async () => {
+      if (user && invitationToken && invitation && !acceptInvitation.isPending) {
+        try {
+          await acceptInvitation.mutateAsync({ token: invitationToken, userId: user.id });
+          navigate('/', { replace: true });
+        } catch (err: any) {
+          console.error('Failed to accept invitation:', err);
+          // Still navigate - user is logged in
+          navigate('/', { replace: true });
+        }
+      } else if (user && !loading && !invitationToken) {
+        navigate('/', { replace: true });
+      }
+    };
+    
+    acceptInvitationIfNeeded();
+  }, [user, loading, invitationToken, invitation, navigate, acceptInvitation]);
 
   const handleLogin = async (data: LoginFormData) => {
     setError(null);
@@ -105,10 +139,31 @@ export default function Auth() {
     }
   };
 
-  if (loading) {
+  if (loading || invitationLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show invalid invitation message
+  if (invitationToken && !invitation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-destructive">Invitație invalidă</CardTitle>
+            <CardDescription>
+              Această invitație nu există, a expirat sau a fost deja folosită.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button onClick={() => navigate('/auth')}>
+              Mergi la autentificare
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -170,17 +225,30 @@ export default function Auth() {
             </div>
             
             <CardTitle className="text-2xl">
-              {activeTab === 'login' ? 'Bine ai revenit!' : 'Creează cont nou'}
+              {invitation 
+                ? 'Acceptă invitația' 
+                : activeTab === 'login' ? 'Bine ai revenit!' : 'Creează cont nou'}
             </CardTitle>
             <CardDescription>
-              {activeTab === 'login' 
-                ? 'Autentifică-te pentru a continua'
-                : 'Completează datele pentru înregistrare'
+              {invitation 
+                ? `Te alături echipei ${(invitation as any).companies?.name || 'companiei'}`
+                : activeTab === 'login' 
+                  ? 'Autentifică-te pentru a continua'
+                  : 'Completează datele pentru înregistrare'
               }
             </CardDescription>
           </CardHeader>
 
           <CardContent>
+            {invitation && (
+              <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>Vei fi adăugat ca <Badge variant="secondary">{roleLabels[invitation.role]}</Badge></span>
+                </div>
+              </div>
+            )}
+
             {error && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
