@@ -177,6 +177,8 @@ export function useInvitationByToken(token: string | null) {
 }
 
 export function useAcceptInvitation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({ token, userId }: { token: string; userId: string }) => {
       // Get invitation details
@@ -185,31 +187,31 @@ export function useAcceptInvitation() {
         .select('id, company_id, role, status, expires_at')
         .eq('token', token)
         .single();
-      
+
       if (invError || !invitation) throw new Error('Invitație invalidă');
       if (invitation.status !== 'pending') throw new Error('Invitația nu mai este validă');
       if (new Date(invitation.expires_at) < new Date()) throw new Error('Invitația a expirat');
-      
+
       // Update user's profile with company_id
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ company_id: invitation.company_id })
         .eq('id', userId);
-      
+
       if (profileError) throw profileError;
-      
+
       // Update user's role
       await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId);
-      
+
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({ user_id: userId, role: invitation.role });
-      
+
       if (roleError) throw roleError;
-      
+
       // Create engineer record
       const { error: engError } = await supabase
         .from('engineers')
@@ -218,19 +220,26 @@ export function useAcceptInvitation() {
           company_id: invitation.company_id,
           is_active: true,
         }, { onConflict: 'profile_id' });
-      
+
+      if (engError) throw engError;
+
       // Mark invitation as accepted
       const { error: acceptError } = await supabase
         .from('invitations')
-        .update({ 
+        .update({
           status: 'accepted',
           accepted_at: new Date().toISOString()
         })
         .eq('id', invitation.id);
-      
+
       if (acceptError) throw acceptError;
-      
+
       return invitation;
+    },
+    onSuccess: (_data, variables) => {
+      // Ensure guards (ProtectedRoute) see the updated company_id immediately
+      queryClient.invalidateQueries({ queryKey: ['profile', variables.userId] });
+      queryClient.invalidateQueries({ queryKey: ['company', variables.userId] });
     },
   });
 }
