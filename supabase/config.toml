@@ -2,3 +2,6 @@ project_id = "mpuoaqeuhwwzdtydstun"
 
 [functions.check-equipment-expiry]
 verify_jwt = false
+
+[functions.send-invitation]
+verify_jwt = false
