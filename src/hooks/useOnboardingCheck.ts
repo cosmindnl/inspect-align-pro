@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -8,9 +8,11 @@ export function useOnboardingCheck() {
   const { data: profile, isLoading: profileLoading } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
   const isLoading = authLoading || profileLoading;
-  const needsOnboarding = user && profile && !profile.company_id;
+  const hasInvitationToken = !!searchParams.get('invitation');
+  const needsOnboarding = user && profile && !profile.company_id && !hasInvitationToken;
 
   useEffect(() => {
     if (isLoading) return;
@@ -20,11 +22,16 @@ export function useOnboardingCheck() {
       return;
     }
 
+    // Don't redirect if user has invitation token - they're in the process of joining
+    if (hasInvitationToken) {
+      return;
+    }
+
     // Redirect to onboarding if user doesn't have a company
     if (needsOnboarding) {
       navigate("/onboarding", { replace: true });
     }
-  }, [isLoading, needsOnboarding, location.pathname, navigate]);
+  }, [isLoading, needsOnboarding, hasInvitationToken, location.pathname, navigate]);
 
   return { isLoading, needsOnboarding };
 }

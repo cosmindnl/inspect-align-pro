@@ -71,24 +71,30 @@ export default function Auth() {
   }, [invitation, signupForm]);
 
   // Handle accepting invitation after signup
+  // Handle accepting invitation after signup/login
   useEffect(() => {
     const acceptInvitationIfNeeded = async () => {
-      if (user && invitationToken && invitation && !acceptInvitation.isPending) {
+      if (user && invitationToken && invitation && !acceptInvitation.isPending && !acceptInvitation.isSuccess) {
         try {
           await acceptInvitation.mutateAsync({ token: invitationToken, userId: user.id });
+          // Navigate to home after successful invitation acceptance
           navigate('/', { replace: true });
         } catch (err: any) {
           console.error('Failed to accept invitation:', err);
-          // Still navigate - user is logged in
-          navigate('/', { replace: true });
+          setError('Eroare la acceptarea invitației. Te rugăm să încerci din nou.');
         }
-      } else if (user && !loading && !invitationToken) {
-        navigate('/', { replace: true });
       }
     };
     
     acceptInvitationIfNeeded();
-  }, [user, loading, invitationToken, invitation, navigate, acceptInvitation]);
+  }, [user, invitationToken, invitation, acceptInvitation.isPending, acceptInvitation.isSuccess, navigate]);
+
+  // Redirect logged-in users without invitation to home
+  useEffect(() => {
+    if (user && !loading && !invitationToken && !invitationLoading) {
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, invitationToken, invitationLoading, navigate]);
 
   const handleLogin = async (data: LoginFormData) => {
     setError(null);
