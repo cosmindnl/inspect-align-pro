@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,9 +11,10 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children, requiresOnboarding = true }: ProtectedRouteProps) {
   const { user, loading: authLoading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: userRole, isLoading: roleLoading } = useUserRole();
   const location = useLocation();
 
-  const isLoading = authLoading || (user && profileLoading);
+  const isLoading = authLoading || (user && (profileLoading || roleLoading));
   const searchParams = new URLSearchParams(location.search);
   const hasInvitationToken = !!searchParams.get('invitation');
 
@@ -29,14 +31,31 @@ export function ProtectedRoute({ children, requiresOnboarding = true }: Protecte
     return <Navigate to={`/auth${location.search || ''}`} state={{ from: location }} replace />;
   }
 
-  // Redirect to onboarding if user doesn't have a company (except on onboarding page)
-  if (requiresOnboarding && profile && !profile.company_id && location.pathname !== "/onboarding") {
-    // If there's an invitation token in the URL, route to the invitation flow instead of company onboarding.
+  // User has a company - allow access
+  if (profile?.company_id) {
+    return <>{children}</>;
+  }
+
+  // User doesn't have company - handle based on context
+  if (requiresOnboarding && profile && !profile.company_id) {
+    // If there's an invitation token in the URL, route to the invitation flow
     if (hasInvitationToken) {
       return <Navigate to={`/auth${location.search}`} replace />;
     }
 
-    return <Navigate to="/onboarding" replace />;
+    // Allow access to settings and waiting pages without company
+    if (location.pathname === "/settings" || location.pathname === "/waiting") {
+      return <>{children}</>;
+    }
+
+    // Redirect based on role
+    if (userRole?.isAdmin) {
+      // Admins go to settings to create company
+      return <Navigate to="/settings" replace />;
+    } else {
+      // Non-admins go to waiting page
+      return <Navigate to="/waiting" replace />;
+    }
   }
 
   return <>{children}</>;
