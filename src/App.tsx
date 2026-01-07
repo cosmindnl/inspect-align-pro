@@ -11,7 +11,7 @@ import ReportDetails from "./pages/ReportDetails";
 import Clients from "./pages/Clients";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
+import WaitingForCompany from "./pages/WaitingForCompany";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,7 +25,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/onboarding" element={<ProtectedRoute requiresOnboarding={false}><Onboarding /></ProtectedRoute>} />
+            <Route path="/waiting" element={<ProtectedRoute requiresOnboarding={false}><WaitingForCompany /></ProtectedRoute>} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
             <Route path="/reports/:id" element={<ProtectedRoute><ReportDetails /></ProtectedRoute>} />

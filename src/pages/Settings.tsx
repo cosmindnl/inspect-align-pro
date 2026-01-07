@@ -30,6 +30,7 @@ import { EquipmentManager } from "@/components/settings/EquipmentManager";
 import { ConformityRulesManager } from "@/components/settings/ConformityRulesManager";
 import { UserRolesManager } from "@/components/settings/UserRolesManager";
 import { NotificationHistory } from "@/components/settings/NotificationHistory";
+import { CompanySetupWizard } from "@/components/settings/CompanySetupWizard";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -292,6 +293,15 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="company">
+          {/* Show wizard if admin without company */}
+          {userRole?.isAdmin && !company && (
+            <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl mb-6">
+              <CompanySetupWizard onComplete={() => window.location.reload()} />
+            </div>
+          )}
+
+          {/* Show company details only if company exists */}
+          {company && (
           <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl">
             <h3 className="text-lg font-semibold mb-4">Detalii Companie</h3>
             
@@ -454,13 +464,18 @@ const Settings = () => {
                 )}
                 Salvează Modificările
               </Button>
-              {!company && (
-                <p className="text-sm text-muted-foreground">
-                  Nu aveți o companie asociată. Contactați administratorul.
-                </p>
-              )}
             </div>
           </div>
+          )}
+
+          {/* Message for non-admin users without company */}
+          {!userRole?.isAdmin && !company && (
+            <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl">
+              <p className="text-sm text-muted-foreground">
+                Nu aveți o companie asociată. Contactați administratorul pentru a fi invitat.
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="equipment">
