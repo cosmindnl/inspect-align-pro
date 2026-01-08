@@ -42,6 +42,7 @@ const Settings = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [showNewCompanyWizard, setShowNewCompanyWizard] = useState(false);
   
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -293,179 +294,204 @@ const Settings = () => {
         </TabsContent>
 
         <TabsContent value="company">
-          {/* Show wizard if admin without company */}
-          {userRole?.isAdmin && !company && (
+          {/* Show wizard if admin without company OR if admin wants to create new company */}
+          {userRole?.isAdmin && (!company || showNewCompanyWizard) && (
             <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl mb-6">
-              <CompanySetupWizard onComplete={() => window.location.reload()} />
+              {showNewCompanyWizard && company && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mb-4"
+                  onClick={() => setShowNewCompanyWizard(false)}
+                >
+                  ← Înapoi la compania curentă
+                </Button>
+              )}
+              <CompanySetupWizard onComplete={() => {
+                setShowNewCompanyWizard(false);
+                window.location.reload();
+              }} />
             </div>
           )}
 
-          {/* Show company details only if company exists */}
-          {company && (
-          <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl">
-            <h3 className="text-lg font-semibold mb-4">Detalii Companie</h3>
-            
-            {/* Logo Upload Section */}
-            <div className="mb-6">
-              <Label className="mb-3 block">Logo Companie</Label>
-              <div className="flex items-start gap-4">
-                <div className="relative h-24 w-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden bg-muted/50">
-                  {companyForm.logo_url ? (
-                    <img 
-                      src={companyForm.logo_url} 
-                      alt="Logo companie" 
-                      className="h-full w-full object-contain"
+          {/* Show company details only if company exists and wizard is not shown */}
+          {company && !showNewCompanyWizard && (
+            <div className="rounded-xl bg-card p-6 shadow-card max-w-2xl">
+              <h3 className="text-lg font-semibold mb-4">Detalii Companie</h3>
+              
+              {/* Logo Upload Section */}
+              <div className="mb-6">
+                <Label className="mb-3 block">Logo Companie</Label>
+                <div className="flex items-start gap-4">
+                  <div className="relative h-24 w-24 rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center overflow-hidden bg-muted/50">
+                    {companyForm.logo_url ? (
+                      <img 
+                        src={companyForm.logo_url} 
+                        alt="Logo companie" 
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
+                    )}
+                    {isUploadingLogo && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoUpload}
                     />
-                  ) : (
-                    <ImageIcon className="h-8 w-8 text-muted-foreground/50" />
-                  )}
-                  {isUploadingLogo && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleLogoUpload}
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadingLogo || !company}
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    Încarcă Logo
-                  </Button>
-                  {companyForm.logo_url && (
                     <Button 
-                      variant="ghost" 
+                      variant="outline" 
                       size="sm"
-                      className="text-destructive hover:text-destructive"
-                      onClick={handleLogoDelete}
-                      disabled={isUploadingLogo}
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingLogo || !company}
                     >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Șterge Logo
+                      <Upload className="mr-2 h-4 w-4" />
+                      Încarcă Logo
+                    </Button>
+                    {companyForm.logo_url && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={handleLogoDelete}
+                        disabled={isUploadingLogo}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Șterge Logo
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG sau SVG. Max 2MB.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="my-6" />
+
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="companyName">Denumire Firmă *</Label>
+                  <Input 
+                    id="companyName" 
+                    value={companyForm.name}
+                    onChange={(e) => setCompanyForm(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cui">CUI</Label>
+                    <Input 
+                      id="cui" 
+                      value={companyForm.cui}
+                      onChange={(e) => setCompanyForm(prev => ({ ...prev, cui: e.target.value }))}
+                      placeholder="RO12345678"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="regCom">Reg. Com.</Label>
+                    <Input 
+                      id="regCom" 
+                      value={companyForm.registration_number}
+                      onChange={(e) => setCompanyForm(prev => ({ ...prev, registration_number: e.target.value }))}
+                      placeholder="J40/1234/2020"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="anre">Certificat ANRE</Label>
+                  <Input 
+                    id="anre" 
+                    value={companyForm.anre_certificate_number}
+                    onChange={(e) => setCompanyForm(prev => ({ ...prev, anre_certificate_number: e.target.value }))}
+                    placeholder="Număr certificat ANRE"
+                  />
+                </div>
+                <Separator className="my-2" />
+                <div className="space-y-2">
+                  <Label htmlFor="companyAddress">Adresă</Label>
+                  <Input 
+                    id="companyAddress" 
+                    value={companyForm.address}
+                    onChange={(e) => setCompanyForm(prev => ({ ...prev, address: e.target.value }))}
+                    placeholder="Strada și numărul"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Oraș</Label>
+                    <Input 
+                      id="city" 
+                      value={companyForm.city}
+                      onChange={(e) => setCompanyForm(prev => ({ ...prev, city: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="county">Județ</Label>
+                    <Input 
+                      id="county" 
+                      value={companyForm.county}
+                      onChange={(e) => setCompanyForm(prev => ({ ...prev, county: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="companyPhone">Telefon</Label>
+                    <Input 
+                      id="companyPhone" 
+                      value={companyForm.phone}
+                      onChange={(e) => setCompanyForm(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="+40 XXX XXX XXX"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyEmail">Email</Label>
+                    <Input 
+                      id="companyEmail" 
+                      type="email"
+                      value={companyForm.email}
+                      onChange={(e) => setCompanyForm(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="contact@firma.ro"
+                    />
+                  </div>
+                </div>
+                <Separator className="my-4" />
+                <div className="flex gap-3">
+                  <Button 
+                    variant="accent" 
+                    className="w-fit"
+                    onClick={handleCompanySave}
+                    disabled={updateCompany.isPending || !company}
+                  >
+                    {updateCompany.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Salvează Modificările
+                  </Button>
+                  {userRole?.isAdmin && (
+                    <Button 
+                      variant="outline" 
+                      className="w-fit"
+                      onClick={() => setShowNewCompanyWizard(true)}
+                    >
+                      <Building className="mr-2 h-4 w-4" />
+                      Companie Nouă
                     </Button>
                   )}
-                  <p className="text-xs text-muted-foreground">
-                    PNG, JPG sau SVG. Max 2MB.
-                  </p>
                 </div>
               </div>
             </div>
-
-            <Separator className="my-6" />
-
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Denumire Firmă *</Label>
-                <Input 
-                  id="companyName" 
-                  value={companyForm.name}
-                  onChange={(e) => setCompanyForm(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cui">CUI</Label>
-                  <Input 
-                    id="cui" 
-                    value={companyForm.cui}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, cui: e.target.value }))}
-                    placeholder="RO12345678"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="regCom">Reg. Com.</Label>
-                  <Input 
-                    id="regCom" 
-                    value={companyForm.registration_number}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, registration_number: e.target.value }))}
-                    placeholder="J40/1234/2020"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="anre">Certificat ANRE</Label>
-                <Input 
-                  id="anre" 
-                  value={companyForm.anre_certificate_number}
-                  onChange={(e) => setCompanyForm(prev => ({ ...prev, anre_certificate_number: e.target.value }))}
-                  placeholder="Număr certificat ANRE"
-                />
-              </div>
-              <Separator className="my-2" />
-              <div className="space-y-2">
-                <Label htmlFor="companyAddress">Adresă</Label>
-                <Input 
-                  id="companyAddress" 
-                  value={companyForm.address}
-                  onChange={(e) => setCompanyForm(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Strada și numărul"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">Oraș</Label>
-                  <Input 
-                    id="city" 
-                    value={companyForm.city}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, city: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="county">Județ</Label>
-                  <Input 
-                    id="county" 
-                    value={companyForm.county}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, county: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="companyPhone">Telefon</Label>
-                  <Input 
-                    id="companyPhone" 
-                    value={companyForm.phone}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+40 XXX XXX XXX"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="companyEmail">Email</Label>
-                  <Input 
-                    id="companyEmail" 
-                    type="email"
-                    value={companyForm.email}
-                    onChange={(e) => setCompanyForm(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="contact@firma.ro"
-                  />
-                </div>
-              </div>
-              <Separator className="my-4" />
-              <Button 
-                variant="accent" 
-                className="w-fit"
-                onClick={handleCompanySave}
-                disabled={updateCompany.isPending || !company}
-              >
-                {updateCompany.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Salvează Modificările
-              </Button>
-            </div>
-          </div>
           )}
 
           {/* Message for non-admin users without company */}
