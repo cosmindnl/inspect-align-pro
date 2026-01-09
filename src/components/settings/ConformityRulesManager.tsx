@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -8,7 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle, Scale } from "lucide-react";
+import { CheckCircle, Scale, FileText, Zap, Sun, Target } from "lucide-react";
+import { useReports } from "@/hooks/useReports";
+import { format } from "date-fns";
+import { ro } from "date-fns/locale";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Measurement types - shared with MeasurementDialog
 export const measurementTypes = [
@@ -69,8 +72,22 @@ export function getConformityRule(measurementType: string): ConformityRule {
   return rules[measurementType] || "lte";
 }
 
+const reportTypeConfig = {
+  ground: { icon: Target, label: "Priză de Pământ", color: "text-amber-600" },
+  electrical: { icon: Zap, label: "Verificare Electrică", color: "text-blue-600" },
+  solar: { icon: Sun, label: "Instalație Solară", color: "text-yellow-500" },
+};
+
+const statusLabels: Record<string, string> = {
+  draft: "Ciornă",
+  validated: "Validat",
+  signed: "Semnat",
+  archived: "Arhivat",
+};
+
 export function ConformityRulesManager() {
   const [rules, setRules] = useState<ConformityRules>(getStoredConformityRules());
+  const { data: reports, isLoading: reportsLoading } = useReports();
 
   useEffect(() => {
     setRules(getStoredConformityRules());
@@ -82,8 +99,107 @@ export function ConformityRulesManager() {
     saveConformityRules(updated);
   };
 
+  // Group reports by type
+  const reportsByType = reports?.reduce((acc, report) => {
+    const type = report.report_type;
+    if (!acc[type]) acc[type] = [];
+    acc[type].push(report);
+    return acc;
+  }, {} as Record<string, typeof reports>) || {};
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Reports by Category Section */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          Rapoarte pe Categorii
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Lista rapoartelor create, grupate pe tipul de verificare.
+        </p>
+
+        {reportsLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {(["ground", "electrical", "solar"] as const).map((type) => {
+              const config = reportTypeConfig[type];
+              const Icon = config.icon;
+              const typeReports = reportsByType[type] || [];
+
+              return (
+                <div key={type} className="rounded-lg border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Icon className={`h-5 w-5 ${config.color}`} />
+                    <h4 className="font-medium">{config.label}</h4>
+                    <Badge variant="secondary" className="ml-auto">
+                      {typeReports.length} rapoarte
+                    </Badge>
+                  </div>
+
+                  {typeReports.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">
+                      Niciun raport în această categorie.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {typeReports.map((report) => (
+                        <div
+                          key={report.id}
+                          className="flex items-center justify-between p-2 rounded bg-muted/50 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs">
+                              {report.report_number}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {report.sites?.clients?.name || "—"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={
+                                report.conformity === "conformant"
+                                  ? "default"
+                                  : report.conformity === "nonconformant"
+                                  ? "destructive"
+                                  : "outline"
+                              }
+                              className="text-xs"
+                            >
+                              {report.conformity === "conformant"
+                                ? "Conform"
+                                : report.conformity === "nonconformant"
+                                ? "Neconform"
+                                : "—"}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {statusLabels[report.status || "draft"]}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {report.created_at &&
+                                format(new Date(report.created_at), "d MMM yyyy", {
+                                  locale: ro,
+                                })}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Conformity Rules Section */}
       <div>
         <h3 className="text-lg font-semibold mb-4">Reguli de Conformitate</h3>
         <p className="text-sm text-muted-foreground mb-6">
