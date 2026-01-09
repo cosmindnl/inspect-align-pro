@@ -2,13 +2,12 @@ import {
   LayoutDashboard, 
   FileText, 
   Zap, 
-  Sun, 
   Users, 
   Settings,
-  Building2,
   Plus,
   ChevronDown,
-  LogOut
+  LogOut,
+  Building2
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -31,10 +30,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useCompany } from "@/hooks/useCompany";
 import { toast } from "sonner";
 
 const mainNavItems = [
@@ -54,6 +54,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
+  const { data: company } = useCompany();
   const collapsed = state === "collapsed";
 
   const isActive = (path: string) => location.pathname === path;
@@ -67,7 +68,8 @@ export function AppSidebar() {
     ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || "Utilizator"
     : "Utilizator";
 
-  const companyName = profile?.companies?.name || "Inginer ANRE";
+  const companyName = company?.name || profile?.companies?.name || "Companie";
+  const companyLogo = company?.logo_url;
 
   const handleLogout = async () => {
     try {
@@ -83,16 +85,25 @@ export function AppSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-accent shadow-glow">
-            <Zap className="h-5 w-5 text-accent-foreground" />
-          </div>
+          {companyLogo ? (
+            <Avatar className="h-10 w-10 rounded-lg">
+              <AvatarImage src={companyLogo} alt={companyName} className="object-cover" />
+              <AvatarFallback className="rounded-lg bg-sidebar-accent">
+                <Building2 className="h-5 w-5 text-sidebar-foreground/70" />
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg gradient-accent shadow-glow">
+              <Zap className="h-5 w-5 text-accent-foreground" />
+            </div>
+          )}
           {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-base font-semibold text-sidebar-foreground">
-                ElectroVerify
+            <div className="flex flex-col min-w-0">
+              <span className="text-base font-semibold text-sidebar-foreground truncate">
+                {companyName}
               </span>
               <span className="text-xs text-sidebar-foreground/60">
-                IEC Compliance
+                {company?.is_anre_certified ? "Certificat ANRE" : "IEC Compliance"}
               </span>
             </div>
           )}
