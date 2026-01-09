@@ -42,11 +42,6 @@ const mainNavItems = [
   { title: "Rapoarte", url: "/reports", icon: FileText },
 ];
 
-const reportTypes = [
-  { title: "Prize de Pământ", url: "/reports/ground", icon: Zap },
-  { title: "Instalații Electrice", url: "/reports/electrical", icon: Building2 },
-  { title: "Sisteme Fotovoltaice", url: "/reports/solar", icon: Sun },
-];
 
 const managementItems = [
   { title: "Clienți", url: "/clients", icon: Users },
@@ -62,7 +57,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
 
   const isActive = (path: string) => location.pathname === path;
-  const isReportActive = reportTypes.some(item => location.pathname.startsWith(item.url));
+  
 
   const userInitials = profile 
     ? `${profile.first_name?.[0] || ""}${profile.last_name?.[0] || ""}`.toUpperCase() || "U"
@@ -148,38 +143,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Report Types */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs uppercase tracking-wider">
-            Tipuri Verificări
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {reportTypes.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                    tooltip={item.title}
-                  >
-                    <NavLink 
-                      to={item.url}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
-                        isActive(item.url) 
-                          ? "bg-sidebar-accent text-sidebar-primary" 
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
         {/* Management */}
         <SidebarGroup>
