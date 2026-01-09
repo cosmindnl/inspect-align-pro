@@ -1,14 +1,57 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, CheckCircle, AlertTriangle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface AppLayoutProps {
   children: React.ReactNode;
   title?: React.ReactNode;
   subtitle?: string;
 }
+
+// Mock notifications - in a real app these would come from a hook/API
+const notifications = [
+  {
+    id: "1",
+    type: "success",
+    title: "Raport validat",
+    message: "Raportul BV-2026-0001 a fost validat cu succes.",
+    time: "Acum 5 min",
+  },
+  {
+    id: "2",
+    type: "warning",
+    title: "Echipament expiră curând",
+    message: "Multimetrul Fluke 1587 expiră în 30 de zile.",
+    time: "Acum 1 oră",
+  },
+  {
+    id: "3",
+    type: "info",
+    title: "Client nou adăugat",
+    message: "Clientul SC Exemplu SRL a fost adăugat.",
+    time: "Ieri",
+  },
+];
+
+const notificationIcons = {
+  success: CheckCircle,
+  warning: AlertTriangle,
+  info: Info,
+};
+
+const notificationColors = {
+  success: "text-green-500",
+  warning: "text-amber-500",
+  info: "text-blue-500",
+};
 
 export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
   return (
@@ -32,10 +75,66 @@ export function AppLayout({ children, title, subtitle }: AppLayoutProps) {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent animate-pulse" />
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {notifications.length > 0 && (
+                      <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent animate-pulse" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="w-80 p-0 bg-popover border shadow-lg" 
+                  align="end"
+                  sideOffset={8}
+                >
+                  <div className="p-3 border-b">
+                    <h4 className="font-semibold text-sm">Notificări</h4>
+                  </div>
+                  <ScrollArea className="h-[300px]">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        Nu ai notificări noi.
+                      </div>
+                    ) : (
+                      <div className="divide-y">
+                        {notifications.map((notification) => {
+                          const Icon = notificationIcons[notification.type as keyof typeof notificationIcons];
+                          const colorClass = notificationColors[notification.type as keyof typeof notificationColors];
+                          
+                          return (
+                            <div
+                              key={notification.id}
+                              className="p-3 hover:bg-muted/50 cursor-pointer transition-colors"
+                            >
+                              <div className="flex gap-3">
+                                <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${colorClass}`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium">
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground/70 mt-1">
+                                    {notification.time}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </ScrollArea>
+                  <div className="p-2 border-t">
+                    <Button variant="ghost" size="sm" className="w-full text-xs">
+                      Vezi toate notificările
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </header>
 
