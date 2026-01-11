@@ -7,7 +7,8 @@ import {
   Plus,
   ChevronDown,
   LogOut,
-  Building2
+  Building2,
+  ShieldCheck
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useCompany } from "@/hooks/useCompany";
+import { useUserRole } from "@/hooks/useUserRole";
 import { toast } from "sonner";
 
 const mainNavItems = [
@@ -48,6 +50,10 @@ const managementItems = [
   { title: "Setări", url: "/settings", icon: Settings },
 ];
 
+const adminItems = [
+  { title: "Administrare Rapoarte", url: "/reports-admin", icon: ShieldCheck },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
@@ -55,7 +61,9 @@ export function AppSidebar() {
   const { signOut } = useAuth();
   const { data: profile } = useProfile();
   const { data: company } = useCompany();
+  const { data: userRoles } = useUserRole();
   const collapsed = state === "collapsed";
+  const isAdmin = userRoles?.isAdmin;
 
   const isActive = (path: string) => location.pathname === path;
   
@@ -187,6 +195,41 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin Only */}
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs uppercase tracking-wider">
+              Administrare
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
+                      tooltip={item.title}
+                    >
+                      <NavLink 
+                        to={item.url}
+                        className={cn(
+                          "flex items-center gap-3 rounded-lg px-3 py-2 transition-all",
+                          isActive(item.url) 
+                            ? "bg-sidebar-accent text-sidebar-primary" 
+                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                        )}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-sidebar-border">

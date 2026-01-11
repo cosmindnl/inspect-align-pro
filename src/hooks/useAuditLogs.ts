@@ -22,6 +22,28 @@ export function useReportAuditLogs(reportId: string) {
   });
 }
 
+export function useAuditLogs(tableName?: string) {
+  return useQuery({
+    queryKey: ['audit_logs', tableName || 'all'],
+    queryFn: async () => {
+      let query = supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (tableName) {
+        query = query.eq('table_name', tableName);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      return data as AuditLog[];
+    },
+  });
+}
+
 export function useCreateAuditLog() {
   const queryClient = useQueryClient();
   
@@ -54,6 +76,9 @@ export function useCreateAuditLog() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ 
         queryKey: ['audit_logs', variables.table_name, variables.record_id] 
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['audit_logs'] 
       });
     },
   });
