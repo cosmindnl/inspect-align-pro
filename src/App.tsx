@@ -13,6 +13,7 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import WaitingForCompany from "./pages/WaitingForCompany";
 import NotFound from "./pages/NotFound";
+import ReportsAdmin from "./pages/ReportsAdmin";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/reports/:id" element={<ProtectedRoute><ReportDetails /></ProtectedRoute>} />
             <Route path="/clients" element={<ProtectedRoute><Clients /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/reports-admin" element={<ProtectedRoute><ReportsAdmin /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
