@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useCompanyUsers, useUpdateUserRole, useAdminCount } from "@/hooks/useUserManagement";
+import { useCompanyUsers, useUpdateUserRole, useAdminCount, useResetUserPassword, useDeleteUser } from "@/hooks/useUserManagement";
 import { Database } from "@/integrations/supabase/types";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -28,12 +29,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Shield, Wrench, Eye, Users, Mail } from "lucide-react";
+import { Loader2, Shield, Wrench, Eye, Users, Mail, MoreHorizontal, KeyRound, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import { InvitationsManager } from "./InvitationsManager";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { DeleteUserDialog } from "./DeleteUserDialog";
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -66,6 +76,8 @@ export function UserRolesManager() {
   const { data: users, isLoading } = useCompanyUsers();
   const { data: adminCount } = useAdminCount();
   const updateRole = useUpdateUserRole();
+  const resetPassword = useResetUserPassword();
+  const deleteUser = useDeleteUser();
   
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
@@ -77,6 +89,26 @@ export function UserRolesManager() {
     userId: "",
     userName: "",
     newRole: "engineer",
+  });
+
+  const [resetPasswordDialog, setResetPasswordDialog] = useState<{
+    open: boolean;
+    userId: string;
+    userName: string;
+  }>({
+    open: false,
+    userId: "",
+    userName: "",
+  });
+
+  const [deleteUserDialog, setDeleteUserDialog] = useState<{
+    open: boolean;
+    userId: string;
+    userName: string;
+  }>({
+    open: false,
+    userId: "",
+    userName: "",
   });
 
   const handleRoleChange = (userId: string, userName: string, newRole: AppRole) => {
@@ -112,6 +144,55 @@ export function UserRolesManager() {
       toast.error("Eroare la actualizarea rolului: " + error.message);
     } finally {
       setConfirmDialog({ ...confirmDialog, open: false });
+    }
+  };
+
+  const handleResetPassword = (userId: string, userName: string) => {
+    setResetPasswordDialog({
+      open: true,
+      userId,
+      userName,
+    });
+  };
+
+  const confirmResetPassword = async () => {
+    try {
+      await resetPassword.mutateAsync(resetPasswordDialog.userId);
+      toast.success(`Email de resetare parolă trimis către ${resetPasswordDialog.userName}`);
+      setResetPasswordDialog({ ...resetPasswordDialog, open: false });
+    } catch (error: any) {
+      toast.error("Eroare la resetarea parolei: " + error.message);
+    }
+  };
+
+  const handleDeleteUser = (userId: string, userName: string) => {
+    if (userId === user?.id) {
+      toast.error("Nu vă puteți șterge propriul cont.");
+      return;
+    }
+
+    const targetUser = users?.find(u => u.id === userId);
+    const isOnlyAdmin = adminCount === 1 && targetUser?.roles.includes('admin');
+    
+    if (isOnlyAdmin) {
+      toast.error("Nu puteți șterge ultimul administrator din companie.");
+      return;
+    }
+
+    setDeleteUserDialog({
+      open: true,
+      userId,
+      userName,
+    });
+  };
+
+  const confirmDeleteUser = async () => {
+    try {
+      await deleteUser.mutateAsync(deleteUserDialog.userId);
+      toast.success(`Utilizatorul ${deleteUserDialog.userName} a fost șters`);
+      setDeleteUserDialog({ ...deleteUserDialog, open: false });
+    } catch (error: any) {
+      toast.error("Eroare la ștergerea utilizatorului: " + error.message);
     }
   };
 
@@ -206,26 +287,53 @@ export function UserRolesManager() {
                             : '-'}
                         </TableCell>
                         <TableCell className="text-right">
-                          {isCurrentUser || isOnlyAdmin ? (
-                            <span className="text-xs text-muted-foreground">
-                              {isCurrentUser ? "Nu poți schimba" : "Ultimul admin"}
-                            </span>
-                          ) : (
-                            <Select
-                              value={currentRole}
-                              onValueChange={(value) => handleRoleChange(u.id, fullName, value as AppRole)}
-                              disabled={updateRole.isPending}
-                            >
-                              <SelectTrigger className="w-[140px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="admin">Administrator</SelectItem>
-                                <SelectItem value="engineer">Inginer</SelectItem>
-                                <SelectItem value="viewer">Vizualizator</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {isCurrentUser || isOnlyAdmin ? (
+                              <span className="text-xs text-muted-foreground">
+                                {isCurrentUser ? "Nu poți schimba" : "Ultimul admin"}
+                              </span>
+                            ) : (
+                              <Select
+                                value={currentRole}
+                                onValueChange={(value) => handleRoleChange(u.id, fullName, value as AppRole)}
+                                disabled={updateRole.isPending}
+                              >
+                                <SelectTrigger className="w-[140px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="admin">Administrator</SelectItem>
+                                  <SelectItem value="engineer">Inginer</SelectItem>
+                                  <SelectItem value="viewer">Vizualizator</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                            
+                            {!isCurrentUser && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleResetPassword(u.id, fullName)}>
+                                    <KeyRound className="mr-2 h-4 w-4" />
+                                    Resetare parolă
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteUser(u.id, fullName)}
+                                    className="text-destructive focus:text-destructive"
+                                    disabled={isOnlyAdmin}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Șterge utilizator
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -247,7 +355,7 @@ export function UserRolesManager() {
         </TabsContent>
       </Tabs>
 
-      {/* Confirm dialog */}
+      {/* Confirm role change dialog */}
       <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -266,6 +374,24 @@ export function UserRolesManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset password dialog */}
+      <ResetPasswordDialog
+        open={resetPasswordDialog.open}
+        onOpenChange={(open) => setResetPasswordDialog({ ...resetPasswordDialog, open })}
+        userName={resetPasswordDialog.userName}
+        onConfirm={confirmResetPassword}
+        isPending={resetPassword.isPending}
+      />
+
+      {/* Delete user dialog */}
+      <DeleteUserDialog
+        open={deleteUserDialog.open}
+        onOpenChange={(open) => setDeleteUserDialog({ ...deleteUserDialog, open })}
+        userName={deleteUserDialog.userName}
+        onConfirm={confirmDeleteUser}
+        isPending={deleteUser.isPending}
+      />
     </div>
   );
 }

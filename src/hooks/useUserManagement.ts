@@ -5,6 +5,11 @@ import { Database } from '@/integrations/supabase/types';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
+interface AdminUserAction {
+  action: 'reset-password' | 'delete-user';
+  targetUserId: string;
+}
+
 export interface UserWithRole {
   id: string;
   email: string;
@@ -126,5 +131,54 @@ export function useAdminCount() {
       return admins?.length || 0;
     },
     enabled: !!profile?.company_id,
+  });
+}
+
+export function useResetUserPassword() {
+  const queryClient = useQueryClient();
+  const { data: profile } = useProfile();
+  
+  return useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: {
+          action: 'reset-password',
+          targetUserId,
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-users', profile?.company_id] });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  const { data: profile } = useProfile();
+  
+  return useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const { data, error } = await supabase.functions.invoke('admin-users', {
+        body: {
+          action: 'delete-user',
+          targetUserId,
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-users', profile?.company_id] });
+      queryClient.invalidateQueries({ queryKey: ['admin-count', profile?.company_id] });
+    },
   });
 }
